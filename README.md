@@ -63,7 +63,7 @@ npm run build
 npm run preview
 ```
 
-Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScript y genera `dist/`, el manifest y un service worker con precaché de los recursos. La base de Vite, el ámbito de la PWA y su inicio están configurados para **`/damas-spanish/`**. No se incluye ningún flujo que publique automáticamente: un futuro despliegue de GitHub Pages debe servir el contenido de `dist/` bajo esa ruta, mediante HTTPS.
+Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScript y genera `dist/`, el manifest y un service worker con precaché de los recursos. La base de Vite, el ámbito de la PWA y su inicio están configurados para **`/damas-spanish/`**. El workflow `.github/workflows/deploy.yml` comprueba las pull requests y despliega únicamente el contenido de `dist/` en GitHub Pages cuando se actualiza `main`, mediante HTTPS.
 
 ### Arquitectura
 
@@ -91,4 +91,30 @@ Las nuevas versiones del service worker esperan a que se cierren las ventanas de
 - El tablero se adapta al ancho; está optimizado para iPad. En teléfonos pequeños las casillas pueden medir menos de 44 px.
 - Compatibilidad prevista con Safari/iPadOS 18; falta validar en el iPad físico de 2019 y con VoiceOver. Las pruebas en Chromium no sustituyen esa comprobación.
 - El historial de repetición se conserva hasta un movimiento irreversible; no hay deshacer ni historial visible de jugadas.
-- No se ha desplegado públicamente el juego.
+- La publicación se realiza al actualizar `main`; la verificación final en Safari debe hacerse sobre la URL publicada.
+
+
+## Despliegue en GitHub Pages
+
+En **Settings → Pages → Build and deployment**, seleccionar **Source: GitHub Actions** (ya configurado para este repositorio). No se necesita una rama `gh-pages`, un backend, secretos propios ni servicios de pago.
+
+El workflow **Deploy PWA to GitHub Pages** utiliza Node.js 24 y ejecuta, en este orden:
+
+1. `npm ci` para instalar las versiones de `package-lock.json`.
+2. `npm test`.
+3. `npm run build` (incluye la comprobación de TypeScript).
+4. `node scripts/check-pages.mjs` para comprobar las rutas del HTML compilado, manifest, iconos, registro y ámbito del service worker, fallback de navegación y todas las entradas del precaché bajo `/damas-spanish/`.
+5. Solo en `main`, sube **exclusivamente `dist/`** como artefacto de Pages y lo despliega en el entorno `github-pages`.
+
+Las pull requests ejecutan las comprobaciones sin publicar. El trabajo de compilación tiene permiso `contents: read`; el de despliegue recibe `pages: write` e `id-token: write`. La concurrencia evita despliegues simultáneos y no interrumpe uno ya iniciado. También puede ejecutarse manualmente desde **Actions → Deploy PWA to GitHub Pages → Run workflow**, seleccionando `main`; otra rama solo se comprueba y no publica.
+
+### Cómo comprobar la publicación
+
+1. Revisar y fusionar la pull request de despliegue en `main` cuando se quiera publicar. Abrir la PR no publica nada.
+2. En **Actions**, abrir la ejecución **Deploy PWA to GitHub Pages** correspondiente a ese commit de `main`.
+3. Comprobar que **Test and build** y **Deploy to GitHub Pages** terminan en verde. Si el entorno `github-pages` exige aprobación, autorizar ese despliegue desde GitHub.
+4. Abrir el enlace del entorno mostrado en el trabajo de despliegue. La dirección prevista es **https://keluria.github.io/damas-spanish/**.
+5. En Safari del iPad Pro, comprobar tablero, fichas y ayuda. En Ayuda, esperar «Juego preparado para abrirse sin conexión» y usar Compartir → Añadir a pantalla de inicio.
+6. Mover una ficha, cerrar y volver a abrir para comprobar el guardado. Activar modo avión, cerrar y volver a abrir desde el icono instalado para comprobar el funcionamiento offline. Desactivar modo avión después de la prueba.
+
+El comprobador del artefacto detecta rutas y archivos incorrectos antes de publicar; no sustituye la prueba real de instalación, caché y funcionamiento offline en Safari. La caché y el guardado del sitio publicado son independientes de los del servidor local. Para recibir futuras actualizaciones, recuperar la conexión y cerrar todas las ventanas de la versión anterior antes de volver a abrir la aplicación.

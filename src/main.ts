@@ -5,6 +5,9 @@ import { candidates } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { ipadOpponent } from './opponent';
 import { resultScreen } from './result';
+import { installDragging } from './drag';
+import { commitDrag } from './drag-model';
+import type { SavedGame } from './storage';
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const loaded = loadGame();
 let saved = loaded.saved;
@@ -18,6 +21,7 @@ function persist(next = saved) {
   el('save-status').hidden = !notice;
 }
 let moving = false;
+let dragging = false;
 const result = resultScreen({
   show: ({ title, message, celebrate }) => {
     el('play-area').hidden = true;
@@ -36,24 +40,24 @@ const result = resultScreen({
     el('status').focus({ preventScroll: true });
   }
 });
-function render(focus?: number, restoring = false) {
-  const end = outcome(saved.game);
-  const moves = end ? [] : legalMoves(saved.game);
-  const humanTurn = saved.game.turn === 'white';
+function render(focus?: number, restoring = false, display: SavedGame = saved) {
+  const end = outcome(display.game);
+  const moves = end ? [] : legalMoves(display.game);
+  const humanTurn = display.game.turn === 'white';
   boardEl.setAttribute('aria-disabled', String(!humanTurn || !!end));
-  const next = new Set((humanTurn ? candidates(saved) : []).filter(m => m.path.length > saved.path.length).map(m => m.path[saved.path.length]));
-  const current = saved.path.at(-1) ?? saved.from;
-  const board: Board = saved.game.board.slice();
-  if (saved.from !== null && saved.path.length) {
-    const piece = board[saved.from]; board[saved.from] = null;
-    candidates(saved)[0]?.captures.slice(0, saved.path.length).forEach(i => { board[i] = null; });
+  const next = new Set((humanTurn ? candidates(display) : []).filter(m => m.path.length > display.path.length).map(m => m.path[display.path.length]));
+  const current = display.path.at(-1) ?? display.from;
+  const board: Board = display.game.board.slice();
+  if (display.from !== null && display.path.length) {
+    const piece = board[display.from]; board[display.from] = null;
+    candidates(display)[0]?.captures.slice(0, display.path.length).forEach(i => { board[i] = null; });
     board[current!] = piece;
   }
   if (!end) {
     el('status').textContent = humanTurn ? 'Tu turno · blancas' : 'Turno del iPad · negras';
-    el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : saved.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : saved.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
+    el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : display.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : display.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
   }
-  el('turn-piece').className = `piece ${saved.game.turn}`;
+  el('turn-piece').className = `piece ${display.game.turn}`;
   boardEl.replaceChildren();
   for (let i = 0; i < 64; i++) {
     const playable = (Math.floor(i / 8) + i % 8) % 2 === 0;
@@ -64,10 +68,13 @@ function render(focus?: number, restoring = false) {
       button.type = 'button';
       button.setAttribute('aria-disabled', String(!humanTurn || !!end));
       button.dataset.square = String(i);
+      if (!end && humanTurn && (display.path.length ? i === current && next.size > 0 : moves.some(move => move.from === i))) {
+        button.dataset.draggable = 'true';
+      }
       button.setAttribute('aria-pressed', String(i === current));
       const piece = board[i];
-      const movable = humanTurn && !end && !saved.path.length && moves.some(m => m.from === i);
-      button.setAttribute('aria-label', `${squareName(i)}: ${piece ? `${piece.king ? 'dama' : 'ficha'} ${name(piece.color)}` : 'vacía'}${next.has(i) ? ', destino permitido' : movable ? ', puede mover' : ''}${i === current ? (humanTurn && saved.path.length ? ', toca para terminar el turno' : ', seleccionada') : ''}`);
+      const movable = humanTurn && !end && !display.path.length && moves.some(m => m.from === i);
+      button.setAttribute('aria-label', `${squareName(i)}: ${piece ? `${piece.king ? 'dama' : 'ficha'} ${name(piece.color)}` : 'vacía'}${next.has(i) ? ', destino permitido' : movable ? ', puede mover' : ''}${i === current ? (humanTurn && display.path.length ? ', toca para terminar el turno' : ', seleccionada') : ''}`);
       if (piece) {
         const token = document.createElement('span');
         token.className = `piece ${piece.color}${movable ? ' movable' : ''}`;
@@ -76,12 +83,11 @@ function render(focus?: number, restoring = false) {
         button.append(token);
       }
       if (next.has(i)) { const dot = document.createElement('span'); dot.className = 'marker'; dot.setAttribute('aria-hidden', 'true'); cell.append(dot); }
-      button.addEventListener('click', () => click(i));
     } else cell.setAttribute('aria-hidden', 'true');
     boardEl.append(cell);
   }
   if (!end && focus !== undefined) boardEl.querySelector<HTMLButtonElement>(`[data-square="${focus}"]`)?.focus({ preventScroll: true });
-  result.update(saved.game, moving, restoring);
+  result.update(display.game, moving, restoring);
 }
 const input = animatedInput({
   current: () => saved,
@@ -91,20 +97,29 @@ const input = animatedInput({
   setBusy: busy => {
     moving = busy;
     boardEl.setAttribute('aria-busy', String(busy));
-    el<HTMLButtonElement>('restart').disabled = busy;
+    el<HTMLButtonElement>('restart').disabled = busy || dragging;
     if (!busy) result.update(saved.game);
   }
 });
 const opponent = ipadOpponent({
   current: () => saved,
-  tap: square => input.tap(square),
+  tap: (square, options) => input.tap(square, options),
   busy: () => input.busy,
   replace: next => { saved = next; warning = ''; persist(); render(); }
 });
-function click(i: number) { void opponent.humanTap(i); }
+const drag = installDragging(boardEl, {
+  current: () => saved,
+  canInput: () => !moving && !dragging && !result.finished && saved.game.turn === 'white' && !dialog.open,
+  preview: next => render(undefined, false, next),
+  restore: focus => render(focus),
+  commit: (source, destination) => commitDrag(saved, source, destination, opponent.humanTap),
+  tap: square => { void opponent.humanTap(square); },
+  setBusy: busy => { dragging = busy; el<HTMLButtonElement>('restart').disabled = busy || moving; }
+});
 const dialog = el<HTMLDialogElement>('restart-dialog');
 el('restart').addEventListener('click', () => {
-  if (input.busy) return;
+  if (input.busy || dragging) return;
+  drag.cancel();
   opponent.suspend();
   if (result.finished) {
     opponent.newGame();

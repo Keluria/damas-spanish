@@ -152,3 +152,9 @@ dialog form { display: flex; gap: 12px; flex-wrap: wrap; }
 }
 /* Headings receive focus for announcement, not as interactive controls. */
 #result-title:focus, #status:focus { outline: none; }
+
+/* Only eligible pieces capture touch gestures; the page outside them still scrolls. */
+.cell[data-draggable="true"] { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.drag-layer { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+.piece.dragging { position: absolute; margin: 0; pointer-events: none; will-change: transform; }
+.piece.dragging::after { display: none; }

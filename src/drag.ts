@@ -1,3 +1,4 @@
+import { destinationPaths } from './interaction';
 import { crossedDragThreshold, dragPlan } from './drag-model';
 import type { SavedGame } from './storage';
 
@@ -36,7 +37,7 @@ export function installDragging(board: HTMLElement, effects: Effects) {
     if (g.token) g.token.style.transform = `translate3d(${g.x - g.startX}px, ${g.y - g.startY}px, 0)`;
   }
   function remove(g: Gesture) { g.layer?.remove(); }
-  async function returnHome(g: Gesture, instant: boolean) {
+  async function returnHome(g: Gesture, instant: boolean, keepBusy = false) {
     settling = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -54,7 +55,7 @@ export function installDragging(board: HTMLElement, effects: Effects) {
       returning?.cancel(); returning = undefined;
       remove(g);
       effects.restore(g.source);
-      settling = false; effects.setBusy(false);
+      if (!keepBusy) { settling = false; effects.setBusy(false); }
     }
   }
   async function cancel(instant = true) {
@@ -112,9 +113,12 @@ export function installDragging(board: HTMLElement, effects: Effects) {
       await returnHome(g, false); return;
     }
     settling = true;
-    remove(g);
+    // A multi-jump shortcut must show the real route, not a straight drag across victims.
+    // Bring the original token home smoothly first, retaining the lock until all jumps end.
+    if (destinationPaths(g.plan.selection).get(destination)!.length > 1) await returnHome(g, false, true);
+    else remove(g);
     try {
-      // The existing input commits the landing instantly: the user already moved the piece.
+      // Single jumps keep the displacement already performed by the user.
       if (!await effects.commit(g.source, destination)) effects.restore(g.source);
     } finally { settling = false; effects.setBusy(false); }
   }

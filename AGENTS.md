@@ -34,7 +34,8 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Selección por dos pulsaciones y teclado, con arrastre opcional mediante Pointer Events.
 - Arrastre solo para fichas humanas y destinos legales; sueltas inválidas o canceladas no cambian el guardado.
 - Sin anuncios, temporizadores, penalizaciones ni distracciones.
-- Resaltar movimientos permitidos.
+- Resaltar movimientos permitidos, incluidos los destinos lejanos inequívocos de capturas múltiples.
+- Los atajos ejecutan saltos y traslados en orden; destinos con capturas diferentes requieren selección por etapas. Conservar parada voluntaria y guardar el resultado completo antes de animar.
 - Dificultad baja para jugar contra la máquina.
 - Botón grande «Nueva partida»: confirmación durante el juego y reinicio directo tras el resultado.
 - Resultado después de la última animación; celebración suave solo para victoria humana, sin repetirse al restaurar. Respetar reducción de movimiento.

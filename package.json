@@ -11,7 +11,8 @@
     "dev:victory": "vite --config vite.victory.config.ts --host 0.0.0.0",
     "test:victory:browser": "npm run build && node scripts/check-victory-browser.mjs",
     "test:drag:browser": "npm run build && node scripts/check-drag-browser.mjs",
-    "test:captures:browser": "npm run build && node scripts/check-captures-browser.mjs"
+    "test:captures:browser": "npm run build && node scripts/check-captures-browser.mjs",
+    "test:destinations:browser": "npm run build && node scripts/check-destinations-browser.mjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

@@ -237,3 +237,26 @@ npm run test:captures:browser
 ```
 
 La prueba usa la compilación de producción y partidas aisladas en contextos de navegador, sin tocar el guardado del usuario. Comprueba orden salto/traslado, identidad de la ficha, posiciones intermedias, píxeles visibles fuera del marco, destino y tamaño finales, captura múltiple, arrastre sin animación repetida, victoria aplazada, reinicio, recarga y reducción de movimiento. El workflow **Verify drag input** ejecuta también esta prueba y conserva el artefacto **captured-pieces** con vídeo, imágenes y resultados. Verificación física en Safari/iPadOS 18 y el iPad de 2019 pendiente.
+
+
+## Destino directo de capturas múltiples
+
+Al seleccionar una ficha se resaltan los destinos del siguiente salto y los destinos más lejanos que tienen una ruta inequívoca. Tocar un destino lejano ejecuta automáticamente los saltos legales hasta esa casilla. Cada salto va seguido del traslado de su víctima a la colección antes de comenzar el siguiente. No cambia el motor ni se aplican prioridades de cantidad/calidad.
+
+También se puede arrastrar directamente al destino lejano. Al soltar, la ficha vuelve suavemente al origen del gesto y después recorre los saltos reales; así no se sustituye la ruta por un desplazamiento recto. El bloqueo de tablero y Nueva partida se mantiene durante el retorno y toda la secuencia. Un movimiento de un solo salto conserva el arrastre habitual, sin repetirlo. Reducir movimiento presenta los estados instantáneamente.
+
+Los destinos inmediatos conservan la selección por etapas: tras un salto se puede continuar o terminar tocando de nuevo la ficha. Un atajo de varios saltos termina en la casilla elegida, aunque existan más capturas después. No hay obligación de continuar ni de capturar.
+
+Si varias rutas al mismo destino capturan exactamente las mismas fichas, se escoge la ruta de casillas en orden numérico lexicográfico (índices fila × 8 + columna). Si capturan fichas diferentes, no se ofrece ese atajo; hay que escoger primero una etapa que desambigüe la ruta. Una casilla que ya es destino inmediato sigue funcionando como una sola etapa, aunque también pueda alcanzarse dando un rodeo.
+
+El resultado completo elegido se guarda antes del primer salto. Las posiciones intermedias solo se presentan en pantalla: no sobrescriben ese guardado. Cerrar o recargar durante la secuencia recupera la posición final y todas sus capturas sin reproducir la celebración. No se cambia el formato de guardado ni la estrategia de la IA, que sigue eligiendo y ejecutando sus movimientos por etapas.
+
+Comprobación con Chromium real:
+
+```sh
+npm install --no-save --package-lock=false playwright@1.65.1 pngjs@7.0.0
+npx playwright install chromium ffmpeg
+npm run test:destinations:browser
+```
+
+Cubre capturas dobles y triples, posiciones intermedias visibles de cada salto y traslado, pulsaciones, arrastre con ratón y táctil nativo, coronación, parada voluntaria, rutas equivalentes y ambiguas, bloqueo continuo, guardado, restauración y reducción de movimiento. El workflow **Verify drag input** conserva el artefacto **multi-capture-destinations**, con vídeo `triple.webm`, capturas y muestras de posiciones. Las pruebas se ejecutan en contextos aislados sobre la compilación de producción; no hay parámetros ni botones de prueba en el juego público. Safari/iPadOS 18 y el iPad físico de 2019 siguen pendientes de comprobación.

@@ -5,6 +5,38 @@ import type { SavedGame } from './storage';
 export function candidates(saved: SavedGame): Move[] {
   return legalMoves(saved.game).filter(m => m.from === saved.from && saved.path.every((p, i) => p === m.path[i]));
 }
+/** Immediate landings always keep step-by-step play. Further landings are shortcuts
+ * only when every legal route to that square captures the same pieces. */
+export function destinationPaths(saved: SavedGame): Map<number, number[]> {
+  if (outcome(saved.game)) return new Map();
+  const moves = candidates(saved);
+  const start = saved.path.length;
+  const result = new Map<number, number[]>();
+  for (const move of moves) {
+    if (move.path.length > start) result.set(move.path[start], [move.path[start]]);
+  }
+  const groups = new Map<number, Move[]>();
+  for (const move of moves) {
+    if (move.path.length <= start + 1) continue;
+    const target = move.path.at(-1)!;
+    if (target === (saved.path.at(-1) ?? saved.from) || result.has(target)) continue;
+    const group = groups.get(target) ?? [];
+    group.push(move); groups.set(target, group);
+  }
+  const signature = (move: Move) => move.captures.slice(start).slice().sort((a, b) => a - b).join(',');
+  for (const [target, routes] of groups) {
+    if (!routes.every(route => signature(route) === signature(routes[0]))) continue;
+    // Numeric lexicographic order, independent of the engine's enumeration order.
+    routes.sort((a, b) => {
+      for (let i = start; i < Math.min(a.path.length, b.path.length); i++) {
+        if (a.path[i] !== b.path[i]) return a.path[i] - b.path[i];
+      }
+      return a.path.length - b.path.length;
+    });
+    result.set(target, routes[0].path.slice(start));
+  }
+  return result;
+}
 function finish(saved: SavedGame, move: Move): SavedGame {
   return { ...saved, game: applyMove(saved.game, move), from: null, path: [] };
 }

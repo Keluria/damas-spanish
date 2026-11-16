@@ -1,5 +1,5 @@
 import { legalMoves, outcome } from './engine';
-import { candidates } from './interaction';
+import { destinationPaths } from './interaction';
 import type { TapOptions } from './animation';
 import type { SavedGame } from './storage';
 
@@ -14,9 +14,7 @@ export function dragPlan(saved: SavedGame, source: number) {
     if (saved.path.at(-1) !== source) return null;
   } else if (!legalMoves(saved.game).some(move => move.from === source)) return null;
   const selection = saved.path.length ? saved : { ...saved, from: source };
-  const destinations = [...new Set(candidates(selection)
-    .filter(move => move.path.length > selection.path.length)
-    .map(move => move.path[selection.path.length]))];
+  const destinations = [...destinationPaths(selection).keys()];
   return destinations.length ? { selection, destinations } : null;
 }
 export async function commitDrag(
@@ -26,6 +24,6 @@ export async function commitDrag(
   const plan = dragPlan(saved, source);
   if (!plan?.destinations.includes(destination)) return false;
   if (saved.from !== plan.selection.from) await tap(plan.selection.from!);
-  await tap(destination, { animate: false });
+  await tap(destination, { animate: destinationPaths(plan.selection).get(destination)!.length > 1 });
   return true;
 }

@@ -3,7 +3,7 @@ import { animatedInput, animatePiece } from './animation';
 import { legalMoves, outcome, type Board } from './engine';
 import { candidates } from './interaction';
 import { loadGame, saveGame } from './storage';
-import { initialGame } from './engine';
+import { ipadOpponent } from './opponent';
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const loaded = loadGame();
 let saved = loaded.saved;
@@ -19,7 +19,9 @@ function persist(next = saved) {
 function render(focus?: number) {
   const end = outcome(saved.game);
   const moves = end ? [] : legalMoves(saved.game);
-  const next = new Set(candidates(saved).filter(m => m.path.length > saved.path.length).map(m => m.path[saved.path.length]));
+  const humanTurn = saved.game.turn === 'white';
+  boardEl.setAttribute('aria-disabled', String(!humanTurn || !!end));
+  const next = new Set((humanTurn ? candidates(saved) : []).filter(m => m.path.length > saved.path.length).map(m => m.path[saved.path.length]));
   const current = saved.path.at(-1) ?? saved.from;
   const board: Board = saved.game.board.slice();
   if (saved.from !== null && saved.path.length) {
@@ -27,8 +29,8 @@ function render(focus?: number) {
     candidates(saved)[0]?.captures.slice(0, saved.path.length).forEach(i => { board[i] = null; });
     board[current!] = piece;
   }
-  el('status').textContent = end ? ('winner' in end ? `Ganan las ${name(end.winner)}` : 'Tablas por repetición') : `Turno de las ${name(saved.game.turn)}`;
-  el('hint').textContent = end ? 'Puedes empezar una nueva partida.' : saved.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : saved.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
+  el('status').textContent = end ? ('winner' in end ? `Ganan las ${name(end.winner)}` : 'Tablas por repetición') : humanTurn ? 'Tu turno · blancas' : 'Turno del iPad · negras';
+  el('hint').textContent = end ? 'Puedes empezar una nueva partida.' : !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : saved.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : saved.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
   el('turn-piece').className = `piece ${saved.game.turn}`;
   boardEl.replaceChildren();
   for (let i = 0; i < 64; i++) {
@@ -38,11 +40,12 @@ function render(focus?: number) {
     if (playable) {
       const button = cell as HTMLButtonElement;
       button.type = 'button';
+      button.setAttribute('aria-disabled', String(!humanTurn || !!end));
       button.dataset.square = String(i);
       button.setAttribute('aria-pressed', String(i === current));
       const piece = board[i];
-      const movable = !end && !saved.path.length && moves.some(m => m.from === i);
-      button.setAttribute('aria-label', `${squareName(i)}: ${piece ? `${piece.king ? 'dama' : 'ficha'} ${name(piece.color)}` : 'vacía'}${next.has(i) ? ', destino permitido' : movable ? ', puede mover' : ''}${i === current ? (saved.path.length ? ', toca para terminar el turno' : ', seleccionada') : ''}`);
+      const movable = humanTurn && !end && !saved.path.length && moves.some(m => m.from === i);
+      button.setAttribute('aria-label', `${squareName(i)}: ${piece ? `${piece.king ? 'dama' : 'ficha'} ${name(piece.color)}` : 'vacía'}${next.has(i) ? ', destino permitido' : movable ? ', puede mover' : ''}${i === current ? (humanTurn && saved.path.length ? ', toca para terminar el turno' : ', seleccionada') : ''}`);
       if (piece) {
         const token = document.createElement('span');
         token.className = `piece ${piece.color}${movable ? ' movable' : ''}`;
@@ -60,18 +63,31 @@ function render(focus?: number) {
 const input = animatedInput({
   current: () => saved,
   persist,
-  present: (next, focus) => { saved = next; render(focus); },
+  present: (next, focus) => { const humanTurn = saved.game.turn === 'white'; saved = next; render(humanTurn ? focus : undefined); },
   animate: move => animatePiece(boardEl, move),
   setBusy: busy => {
     boardEl.setAttribute('aria-busy', String(busy));
     el<HTMLButtonElement>('restart').disabled = busy;
   }
 });
-function click(i: number) { void input.tap(i); }
+const opponent = ipadOpponent({
+  current: () => saved,
+  tap: square => input.tap(square),
+  busy: () => input.busy,
+  replace: next => { saved = next; warning = ''; persist(); render(); }
+});
+function click(i: number) { void opponent.humanTap(i); }
 const dialog = el<HTMLDialogElement>('restart-dialog');
-el('restart').addEventListener('click', () => { if (input.busy) return; dialog.returnValue = ''; dialog.showModal(); });
+el('restart').addEventListener('click', () => { if (input.busy) return; opponent.suspend(); dialog.returnValue = ''; dialog.showModal(); });
 dialog.addEventListener('close', () => {
-  if (dialog.returnValue === 'restart') { saved = { version: 1, game: initialGame(), from: null, path: [] }; warning = ''; persist(); render(); }
+  if (dialog.returnValue === 'restart') opponent.newGame();
+  if (!document.hidden) opponent.resume();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || dialog.open) opponent.suspend();
+  else opponent.resume();
 });
 persist();
 render();
+if (document.hidden) opponent.suspend();
+else opponent.resume();

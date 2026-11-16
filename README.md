@@ -8,7 +8,7 @@ Crear una aplicación sencilla, accesible y fácil de utilizar, que permita juga
 ## Características
 - Tablero tradicional de 8 × 8 casillas.
 - Variante simplificada fija de las damas españolas: capturas opcionales y sin prioridades.
-- Partidas locales para dos personas; rival automático pendiente.
+- Partidas contra el iPad: el humano lleva blancas y empieza; el iPad lleva negras.
 - Fichas grandes y controles táctiles.
 - Movimientos mediante dos pulsaciones.
 - Indicaciones visuales de los movimientos permitidos.
@@ -48,7 +48,7 @@ Desarrollado con ayuda de OpenAI Codex.
 
 ## Primera versión funcional (0.1)
 
-Implementa juego **local para dos personas**. No hay IA ni niveles de dificultad todavía.
+Implementa juego **contra el iPad**, con dificultad fácil fija. El humano lleva blancas y comienza; el iPad responde automáticamente con negras. No hay selectores de modo ni de dificultad.
 
 ### Desarrollo y comprobación
 
@@ -66,7 +66,9 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 
 ### Arquitectura
 
-- `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, capturas opcionales, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` define el punto de entrada de una futura IA.
+- `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, capturas opcionales, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` conserva un contrato para otras estrategias de rival.
+- `src/ai.ts`: elección ponderada y ligera entre los movimientos legales, sin búsqueda profunda ni red.
+- `src/opponent.ts`: coordinación de los turnos negros, pausa breve, cancelación al reiniciar y recuperación de capturas interrumpidas.
 - `src/interaction.ts`: selección por dos pulsaciones y capturas encadenadas opcionales, sin dependencia del DOM.
 - `src/animation.ts`: presentación animada de cada desplazamiento y bloqueo temporal de entrada; usa la interacción existente sin cambiar el motor.
 - `src/main.ts`: tablero, indicador del turno y botón grande «Nueva partida» con confirmación. Sin ajustes, selector de reglas, menús ocultos ni PIN. Solo se muestran avisos adicionales si no se puede guardar o recuperar la partida.
@@ -77,6 +79,18 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 ### Reglas de esta versión
 
 Se juega en casillas claras, con la casilla inferior derecha jugable. Blancas empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. La captura es **opcional**: se puede mover cualquier ficha propia a un destino legal aunque haya capturas. No se aplican las leyes de cantidad ni calidad. Después de cada salto de una captura múltiple se puede continuar tocando otro destino marcado o terminar el turno **tocando de nuevo la ficha que acaba de saltar**. El indicador del turno explica ambas opciones. Si no quedan saltos posibles, el turno termina automáticamente. Durante una cadena no se puede cambiar de ficha ni añadir movimientos sin captura. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
+
+### Rival del iPad
+
+El humano utiliza siempre las blancas y juega primero. Tras completar el turno humano, el iPad espera unos **650 ms** y mueve las negras. El indicador identifica de quién es el turno. La pantalla conserva únicamente tablero, indicador y «Nueva partida»; el diseño de madera no cambia.
+
+La dificultad es fácil: se da algo más de peso a capturas, coronaciones, avance y casillas centrales, y se elige con variación entre **todas** las opciones legales. No es una elección uniforme ni una búsqueda competitiva. Las capturas siguen siendo opcionales para ambos: el iPad también puede elegir no capturar o terminar una cadena antes del último salto.
+
+La máquina utiliza exactamente la misma interacción y las mismas animaciones que el humano, salto a salto. Durante el turno negro se ignoran las pulsaciones sobre el tablero. «Nueva partida» está disponible durante la pausa previa; al abrir su confirmación se suspende la respuesta pendiente. Solo queda desactivada durante un desplazamiento, como antes. Cancelar la confirmación reanuda la respuesta; confirmar borra la partida y deja siempre el primer turno al humano.
+
+Se mantiene el formato de guardado anterior. Al abrir una partida con turno negro, el rival responde una sola vez; si se había interrumpido una cadena negra, retoma la casilla y los saltos pendientes sin repetir las capturas ya guardadas. El resto de la secuencia puede variar al recuperarla. Una recarga durante una animación recupera el salto que ya se guardó, no el origen anterior. Si la aplicación se oculta, se suspende la coordinación y se reanuda al volver.
+
+Las pruebas automatizadas cubren legalidad y variación, respuesta única, bloqueo de pulsaciones, reinicio, confirmación suspendida, restauración, capturas opcionales cortas y completas y animación secuencial. También se han comprobado ocho recorridos con Playwright en Chromium real sobre la compilación de producción: respuesta animada única, reinicio durante la pausa, recargas antes y durante el movimiento, captura doble, continuación guardada, coronación y reducción de movimiento. La comprobación en Safari/iPadOS 18 y el iPad físico de 2019 sigue pendiente.
 
 ### Animaciones de movimiento
 
@@ -96,7 +110,7 @@ Las nuevas versiones del service worker esperan a que se cierren las ventanas de
 
 ### Limitaciones y validación pendiente
 
-- No hay rival automático, elección de dificultad ni rotación del tablero: ambos jugadores comparten el iPad y las blancas están abajo.
+- Hay una única dificultad fácil y no hay rotación del tablero: el humano lleva blancas abajo. La IA no busca varias jugadas por adelantado, no adapta su dificultad y no garantiza siempre la mejor decisión.
 - La triple repetición se resuelve automáticamente. **No se implementan aún los otros supuestos reglamentarios de tablas**, incluidos los límites de movimientos sin capturas/avance de peón y los finales de material específicos. Por tanto, esta versión no es todavía un motor reglamentario completo para competición.
 - No hay ajustes para el cuidador, selectores de reglas ni menús. Se conservan fichas grandes, contraste alto, etiquetas accesibles y foco de teclado. No hay sonidos, reloj ni arrastre. Las marcas indican selección y destinos sin depender solo del color.
 - El tablero se adapta al ancho; está optimizado para iPad. En teléfonos pequeños las casillas pueden medir menos de 44 px.

@@ -1,24 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { applyMove, initialGame, legalMoves, outcome, positionKey, type Game, type Piece } from './engine';
-const w: Piece = { color: 'white', king: false }, b: Piece = { color: 'black', king: false };
+const w: Piece = { color: 'black', king: false }, b: Piece = { color: 'white', king: false };
 const W: Piece = { ...w, king: true }, B: Piece = { ...b, king: true };
-function game(pieces: Record<number, Piece>, turn: 'white' | 'black' = 'white'): Game {
+function game(pieces: Record<number, Piece>, turn: 'black' | 'white' = 'black'): Game {
   const board = Array(64).fill(null);
   Object.entries(pieces).forEach(([i, p]) => { board[Number(i)] = p; });
   return { board, turn, positions: [positionKey(board, turn)] };
 }
 describe('posición y movimientos', () => {
-  it('inicia con 12 fichas por color y blancas al turno', () => {
+  it('inicia con 12 fichas por color y negras al turno', () => {
     const g = initialGame();
-    expect(g.board.filter(p => p?.color === 'white')).toHaveLength(12);
     expect(g.board.filter(p => p?.color === 'black')).toHaveLength(12);
-    expect(g.turn).toBe('white'); expect(legalMoves(g)).toHaveLength(7);
+    expect(g.board.filter(p => p?.color === 'white')).toHaveLength(12);
+    expect(g.turn).toBe('black'); expect(legalMoves(g)).toHaveLength(7);
   });
   it('los peones blancos solo avanzan una casilla', () => {
     expect(legalMoves(game({ 36: w })).map(m => m.path)).toEqual([[27], [29]]);
   });
   it('los peones negros avanzan en sentido opuesto', () => {
-    expect(legalMoves(game({ 27: b }, 'black')).map(m => m.path)).toEqual([[34], [36]]);
+    expect(legalMoves(game({ 27: b }, 'white')).map(m => m.path)).toEqual([[34], [36]]);
   });
   it('una dama vuela en las cuatro diagonales sin saltar fichas propias', () => {
     const moves = legalMoves(game({ 36: W, 18: w }));
@@ -41,7 +41,7 @@ describe('capturas opcionales', () => {
     expect(legalMoves(g)).toContainEqual(other);
     expect(applyMove(g, other).board[27]).toEqual(b);
     const next = applyMove(g, capture);
-    expect(next.board[27]).toBeNull(); expect(next.board[18]).toEqual(w); expect(next.turn).toBe('black');
+    expect(next.board[27]).toBeNull(); expect(next.board[18]).toEqual(w); expect(next.turn).toBe('white');
   });
   it('el peón no captura hacia atrás', () => {
     expect(legalMoves(game({ 36: w, 45: b })).every(m => m.captures.length === 0)).toBe(true);
@@ -51,7 +51,7 @@ describe('capturas opcionales', () => {
     expect(legalMoves(g)).toContainEqual({ from: 54, path: [36, 18], captures: [45, 27] });
     const next = applyMove(g, { from: 54, path: [36], captures: [45] });
     expect(next.board[36]).toEqual(w); expect(next.board[27]).toEqual(b);
-    expect(next.turn).toBe('black');
+    expect(next.turn).toBe('white');
   });
   it('la dama elige entre casillas libres tras la víctima', () => {
     expect(legalMoves(game({ 54: W, 36: b })).filter(m => m.captures.length).map(m => m.path)).toEqual([[27], [18], [9], [0]]);
@@ -88,13 +88,13 @@ describe('coronación y final', () => {
     const move = legalMoves(g)[0]; expect(move.path).toEqual([0]);
     expect(applyMove(g, move).board[0]?.king).toBe(true);
   });
-  it('corona negras en la fila inferior', () => {
-    const g = game({ 54: b, 0: w }, 'black');
+  it('corona blancas en la fila inferior', () => {
+    const g = game({ 54: b, 0: w }, 'white');
     expect(applyMove(g, legalMoves(g)[0]).board[61]?.king).toBe(true);
   });
   it('declara victoria por falta de fichas o bloqueo', () => {
-    expect(outcome(game({ 0: b }))).toEqual({ winner: 'black' });
-    expect(outcome(game({ 0: w, 63: b }))).toEqual({ winner: 'black' });
+    expect(outcome(game({ 0: b }))).toEqual({ winner: 'white' });
+    expect(outcome(game({ 0: w, 63: b }))).toEqual({ winner: 'white' });
   });
   it('declara tablas a la tercera repetición con el mismo turno', () => {
     const g = game({ 0: W, 63: B });
@@ -127,15 +127,15 @@ it('permite parar también tras el segundo salto de una cadena de tres', () => {
   const g = game({ 54: w, 45: b, 27: b, 9: b });
   const stopped = applyMove(g, { from: 54, path: [36, 18], captures: [45, 27] });
   expect(stopped.board[18]).toEqual(w); expect(stopped.board[9]).toEqual(b);
-  expect(stopped.turn).toBe('black');
+  expect(stopped.turn).toBe('white');
   const completed = applyMove(g, { from: 54, path: [36, 18, 0], captures: [45, 27, 9] });
   expect(completed.board[0]).toEqual(W);
 });
 
-it('las negras también pueden ignorar una captura disponible', () => {
-  const g = game({ 18: b, 27: w, 0: b }, 'black');
+it('las blancas también pueden ignorar una captura disponible', () => {
+  const g = game({ 18: b, 27: w, 0: b }, 'white');
   expect(legalMoves(g)).toContainEqual({ from: 18, path: [36], captures: [27] });
   const next = applyMove(g, { from: 0, path: [9], captures: [] });
-  expect(next.board[27]).toEqual(w); expect(next.turn).toBe('white');
+  expect(next.board[27]).toEqual(w); expect(next.turn).toBe('black');
   expect(() => applyMove(g, { from: 18, path: [9], captures: [] })).toThrow();
 });

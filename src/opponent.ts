@@ -1,6 +1,6 @@
 import { chooseEasyMove } from './ai';
 import type { TapOptions } from './animation';
-import { initialGame, legalMoves, outcome, type Move } from './engine';
+import { HUMAN_COLOR, COMPUTER_COLOR, initialGame, legalMoves, outcome, type Move } from './engine';
 import { candidates } from './interaction';
 import type { SavedGame } from './storage';
 
@@ -13,21 +13,21 @@ interface Options {
   delay?: number;
 }
 
-/** Single owner of automatic black turns; the existing animated input plays every step. */
+/** Single owner of automatic computer turns; the existing animated input plays every step. */
 export function ipadOpponent(options: Options) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
   let suspended = false;
   let generation = 0;
-  const blackTurn = () => options.current().game.turn === 'black' && !outcome(options.current().game);
-  const active = (version: number) => version === generation && !suspended && blackTurn();
+  const computerTurn = () => options.current().game.turn === COMPUTER_COLOR && !outcome(options.current().game);
+  const active = (version: number) => version === generation && !suspended && computerTurn();
   function cancelPending() {
     generation++;
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
   }
   function schedule() {
-    if (suspended || running || timer !== undefined || options.busy() || !blackTurn()) return;
+    if (suspended || running || timer !== undefined || options.busy() || !computerTurn()) return;
     const version = generation;
     timer = setTimeout(() => { timer = undefined; void play(version); }, options.delay ?? 650);
   }
@@ -37,19 +37,19 @@ export function ipadOpponent(options: Options) {
     let failed = false;
     try {
       const before = options.current();
-      // Old local games and interrupted black captures use the same save format.
+      // Old local games and interrupted computer captures use the same save format.
       const moves = before.path.length ? candidates(before) : legalMoves(before.game);
       const move = options.choose?.(before, moves) ?? chooseEasyMove(before.game, moves);
       if (!moves.some(candidate => JSON.stringify(candidate) === JSON.stringify(move))) throw new Error('La IA eligió un movimiento no permitido');
       if (before.from !== move.from) await options.tap(move.from);
       for (const destination of move.path.slice(before.path.length)) {
         if (!active(version)) return;
-        await options.tap(destination);
+        await options.tap(destination, { path: [destination] });
       }
       if (!active(version)) return;
       // A chosen short capture prefix ends by tapping the moving piece, just like the human.
       const partial = options.current();
-      if (partial.path.length) await options.tap(partial.path.at(-1)!);
+      if (partial.path.length) await options.tap(partial.path.at(-1)!, { path: [] });
     } catch (error) {
       failed = true;
       console.error('No se pudo completar el turno del iPad', error);
@@ -60,7 +60,7 @@ export function ipadOpponent(options: Options) {
   }
   return {
     async humanTap(square: number, tapOptions?: TapOptions) {
-      if (suspended || running || options.busy() || options.current().game.turn !== 'white') return;
+      if (suspended || running || options.busy() || options.current().game.turn !== HUMAN_COLOR) return;
       await options.tap(square, tapOptions);
       schedule();
     },
@@ -70,7 +70,7 @@ export function ipadOpponent(options: Options) {
       // New game remains available during the thinking pause, never halfway through a jump.
       if (options.busy()) return false;
       cancelPending();
-      options.replace({ version: 1, game: initialGame(), from: null, path: [] });
+      options.replace({ version: 2, game: initialGame(), from: null, path: [] });
       return true;
     }
   };

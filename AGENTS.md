@@ -24,9 +24,9 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Separar la lógica de reglas de la interfaz y crear pruebas automatizadas.
 
 ## Rival
-- El humano lleva siempre blancas y empieza la partida; el iPad controla negras automáticamente.
+- El humano lleva siempre negras y empieza la partida; el iPad controla blancas automáticamente.
 - Dificultad fácil fija y cierta variación, utilizando los movimientos del motor existente.
-- Mantener capturas opcionales para ambos, animaciones por salto y recuperación de turnos negros interrumpidos.
+- Mantener capturas opcionales para ambos, animaciones por salto y recuperación de turnos blancos interrumpidos.
 - No añadir selectores de modo ni dificultad.
 
 ## Accesibilidad
@@ -34,12 +34,12 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Selección por dos pulsaciones y teclado, con arrastre opcional mediante Pointer Events.
 - Arrastre solo para fichas humanas y destinos legales; sueltas inválidas o canceladas no cambian el guardado.
 - Sin anuncios, temporizadores, penalizaciones ni distracciones.
-- Resaltar movimientos permitidos, incluidos los destinos lejanos inequívocos de capturas múltiples.
-- Los atajos ejecutan saltos y traslados en orden; destinos con capturas diferentes requieren selección por etapas. Conservar parada voluntaria y guardar el resultado completo antes de animar.
+- Resaltar movimientos permitidos, incluidos todos los destinos finales de capturas múltiples.
+- Los atajos ejecutan saltos y traslados en orden. Si un destino tiene capturas diferentes (incluido salto inmediato frente a cadena), ofrecer una elección temporal de ruta accesible, sin prioridad impuesta. Conservar parada voluntaria y guardar el resultado completo antes de animar.
 - Dificultad baja para jugar contra la máquina.
 - Botón grande «Nueva partida»: confirmación durante el juego y reinicio directo tras el resultado.
 - Resultado después de la última animación; celebración suave solo para victoria humana, sin repetirse al restaurar. Respetar reducción de movimiento.
-- Guardado automático y recuperación de partida, incluida la colección de capturas.
+- Guardado automático y recuperación de partida, incluida la colección de capturas. Migrar v1 a v2 invirtiendo colores para conservar propietarios, posiciones, selección y repetición; no reinterpretar los colores antiguos como nuevos propietarios.
 - Tras cada salto, trasladar la víctima original a la colección sin recortes ni duplicados; bloquear entrada hasta terminar ambas fases y respetar reducción de movimiento.
 - Pantalla de juego limitada a tablero con colección de fichas capturadas debajo, indicador del turno y botón grande «Nueva partida»; al terminar, sustituir tablero por resultado y conservar un único botón. Sin ajustes, selectores de reglas, menús ocultos ni PIN.
 

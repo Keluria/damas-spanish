@@ -1,4 +1,4 @@
-import { legalMoves, outcome, type Game, type Move } from './engine';
+import { COMPUTER_COLOR, legalMoves, outcome, type Game, type Move } from './engine';
 
 /** One cheap positional pass; no search tree, worker or network is needed. */
 export function chooseEasyMove(
@@ -6,7 +6,7 @@ export function chooseEasyMove(
   moves: readonly Move[] = legalMoves(game),
   random: () => number = Math.random
 ): Move {
-  if (game.turn !== 'black' || outcome(game) || !moves.length) throw new Error('No hay turno del iPad disponible');
+  if (game.turn !== COMPUTER_COLOR || outcome(game) || !moves.length) throw new Error('No hay turno del iPad disponible');
   const ranked = moves.map(move => {
     const piece = game.board[move.from]!;
     const destination = move.path.at(-1)!;

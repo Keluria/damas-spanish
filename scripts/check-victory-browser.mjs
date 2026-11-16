@@ -5,14 +5,15 @@ import { chromium } from 'playwright';
 
 const output = 'work/victory-preview';
 const vite = 'node_modules/vite/bin/vite.js';
-const previewURL = 'http://127.0.0.1:5175/damas-spanish/';
-const productionURL = 'http://127.0.0.1:5176/damas-spanish/';
+const previewPort = Number(process.env.PLAYWRIGHT_VICTORY_PORT ?? 5175);
+const previewURL = `http://127.0.0.1:${previewPort}/damas-spanish/`;
+const productionURL = `http://127.0.0.1:${previewPort + 1}/damas-spanish/`;
 await mkdir(output, { recursive: true });
 const servers = [];
 function start(args, name) {
   const process = spawn(globalThis.process.execPath, [vite, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
-  process.stdout.on('data', chunk => { log += chunk; });
+  process.stdout.on('data', chunk => { log += chunk; process.ready = log.includes('http://'); });
   process.stderr.on('data', chunk => { log += chunk; });
   process.on('error', error => { log += String(error); });
   servers.push({ process, name, log: () => log });
@@ -21,7 +22,7 @@ function start(args, name) {
 async function ready(url, server) {
   for (let i = 0; i < 100; i++) {
     if (server.exitCode !== null) throw new Error('Vite terminó antes de servir ' + url);
-    try { if ((await fetch(url)).ok) return; } catch { /* Waiting for startup. */ }
+    try { if (server.ready && (await fetch(url)).ok) return; } catch { /* Waiting for startup. */ }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   throw new Error('No se pudo abrir ' + url);
@@ -52,8 +53,8 @@ try {
     }
   }
   checks.push('El artefacto de producción no contiene la vista ni el almacén de prueba.');
-  await ready(previewURL, start(['--config', 'vite.victory.config.ts', '--host', '127.0.0.1'], 'development'));
-  await ready(productionURL, start(['preview', '--host', '127.0.0.1', '--port', '5176', '--strictPort'], 'production'));
+  await ready(previewURL, start(['--config', 'vite.victory.config.ts', '--host', '127.0.0.1', '--port', String(previewPort)], 'development'));
+  await ready(productionURL, start(['preview', '--host', '127.0.0.1', '--port', String(previewPort + 1), '--strictPort'], 'production'));
   browser = await chromium.launch({
     headless: true,
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -70,12 +71,12 @@ try {
     for (let i = 0; i < 64; i++) {
       const row = Math.floor(i / 8);
       if ((row + i % 8) % 2 === 0 && (row < 3 || row > 4)) {
-        board[i] = { color: row < 3 ? 'black' : 'white', king: false };
+        board[i] = { color: row < 3 ? 'white' : 'black', king: false };
       }
     }
-    const key = 'white:' + board.map(p => p ? (p.color === 'white' ? 'w' : 'b') : '.').join('');
+    const key = 'black:' + board.map(p => p ? (p.color === 'black' ? 'b' : 'w') : '.').join('');
     window.existingNormalSave = JSON.stringify({
-      version: 1, game: { board, turn: 'white', positions: [key] }, from: null, path: [],
+      version: 2, game: { board, turn: 'black', positions: [key] }, from: null, path: [],
       testMarker: 'existing-game-do-not-touch'
     });
     if (location.protocol === 'http:' && !localStorage.getItem('damas-spanish.game.v1')) {
@@ -91,8 +92,8 @@ try {
   await page.goto(previewURL);
   assert.match(await page.title(), /Prueba de victoria/);
   assert.equal(await page.locator('#board .piece').count(), 2);
-  assert.equal(await page.locator('[data-square="36"] .piece.white').count(), 1);
-  assert.equal(await page.locator('[data-square="27"] .piece.black').count(), 1);
+  assert.equal(await page.locator('[data-square="36"] .piece.black').count(), 1);
+  assert.equal(await page.locator('[data-square="27"] .piece.white').count(), 1);
   await page.screenshot({ path: output + '/01-position.png' });
   await page.locator('[data-square="36"]').click();
   await page.locator('[data-square="18"]').click();
@@ -120,7 +121,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('#play-area').hidden);
   assert.equal(await page.locator('#restart-dialog').isVisible(), false);
   assert.equal(await page.locator('#board .piece').count(), 24);
-  assert.equal(await page.locator('#status').textContent(), 'Tu turno · blancas');
+  assert.equal(await page.locator('#status').textContent(), 'Tu turno · negras');
   assert.equal(await page.evaluate(() => localStorage.getItem('damas-spanish.game.v1')), await page.evaluate(() => window.existingNormalSave));
   checks.push('Nueva partida reinicia directamente; la partida normal existente permanece intacta.');
   await page.reload();

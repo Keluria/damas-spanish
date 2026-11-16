@@ -31,7 +31,7 @@ async function fresh(reduced='no-preference',record=false){
      if(window.pauseCapture&&!window.captureMiddle&&r.y+r.height/2>board.bottom+2&&r.y+r.height/2<target.y+target.height/2-1){
       animation.pause();window.currentCapture=animation;
       window.captureMiddle={origin,target,rect:r.toJSON(),board,samples:flight.samples.slice(),
-       visibleBlack:[...document.querySelectorAll('#board .piece.black,#captured .piece.black,.capture-layer .piece.black')].filter(e=>getComputedStyle(e).visibility!=='hidden').length,
+       visibleBlack:[...document.querySelectorAll('#board .piece.white,#captured .piece.white,.capture-layer .piece.white')].filter(e=>getComputedStyle(e).visibility!=='hidden').length,
        sameNode:token===window.originalVictim};
      }
      if(animation.playState!=='finished')requestAnimationFrame(sample);
@@ -43,17 +43,17 @@ async function fresh(reduced='no-preference',record=false){
  });
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(url);return{page,context};
 }
-async function fixture(page,pieces,turn='white'){
+async function fixture(page,pieces,turn='black'){
  await page.evaluate(({pieces,turn,key})=>{const board=Array(64).fill(null);for(const[i,[color,king]]of Object.entries(pieces))board[Number(i)]={color,king};
-  const position=turn+':'+board.map(p=>p?(p.color==='white'?(p.king?'W':'w'):(p.king?'B':'b')):'.').join('');
-  localStorage.setItem(key,JSON.stringify({version:1,game:{board,turn,positions:[position]},from:null,path:[]}));
+  const position=turn+':'+board.map(p=>p?(p.color==='black'?(p.king?'B':'b'):(p.king?'W':'w')):'.').join('');
+  localStorage.setItem(key,JSON.stringify({version:2,game:{board,turn,positions:[position]},from:null,path:[]}));
  },{pieces,turn,key});await page.reload();
 }
 async function state(page){return page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);}
 async function capture(page){await page.locator('[data-square="36"]').click();await page.locator('[data-square="18"]').click();}
 async function flight(page){await page.waitForFunction(()=>document.querySelector('.captured-travelling'));}
 async function settled(page){await page.waitForFunction(()=>!document.querySelector('.capture-layer')&&document.querySelector('#board').getAttribute('aria-busy')==='false');}
-const regular={36:['white',false],27:['black',false],2:['black',false]};
+const regular={36:['black',false],27:['white',false],2:['white',false]};
 try{
  await ready();browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});
  {
@@ -69,10 +69,15 @@ try{
   assert.ok(mid.rect.width<mid.origin.width);assert.ok(mid.rect.width>=mid.target.width-.5);
   assert.ok(new Set(mid.samples.map(p=>p.y.toFixed(1))).size>4,'Deben existir posiciones intermedias reales.');
   assert.ok(mid.samples.every(p=>p.opacity==='1'&&p.visibility==='visible'));
-  const png=PNG.sync.read(pngBytes), x=Math.round(mid.rect.x+mid.rect.width/2),y=Math.round(mid.rect.y+mid.rect.height/2),offset=(y*png.width+x)*4;
-  assert.ok(png.data[offset]<90&&png.data[offset+1]<80&&png.data[offset+2]<70,'Debe pintarse la ficha oscura fuera del borde del tablero.');
+  const png=PNG.sync.read(pngBytes),y=Math.round(mid.rect.y+mid.rect.height/2);
+  let paintedIvory=0;
+  for(let x=Math.ceil(mid.rect.x);x<mid.rect.x+mid.rect.width;x++){
+   const offset=(y*png.width+x)*4;
+   if(png.data[offset]>210&&png.data[offset+1]>190&&png.data[offset+2]>150)paintedIvory++;
+  }
+  assert.ok(paintedIvory>=5,'Debe pintarse la ficha marfil fuera del marco sobre el fondo nogal.');
   await settled(page);
-  const target=await page.locator('[data-captured-slot="black-0"] .piece').boundingBox();
+  const target=await page.locator('[data-captured-slot="white-0"] .piece').boundingBox();
   assert.ok(Math.abs(target.width-mid.target.width)<1);assert.ok(Math.abs(target.x-mid.target.x)<1);
   const trace=await page.evaluate(()=>window.captureTrace);
   assert.ok(trace.events.findIndex(e=>e.role==='victim'&&e.phase==='start')>trace.events.findIndex(e=>e.role==='attacker'&&e.phase==='finish'));
@@ -85,25 +90,25 @@ try{
   const video=page.video();await context.close();if(video){await video.saveAs(output+'/capture.webm');await video.delete();}
  }
  {
-  const{page,context}=await fresh();await fixture(page,{18:['black',false],27:['white',true],45:['white',false],63:['white',false]},'black');
-  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='white'&&document.querySelector('#board').getAttribute('aria-busy')==='false');
+  const{page,context}=await fresh();await fixture(page,{18:['white',false],27:['black',true],45:['black',false],63:['black',false]},'white');
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='black'&&document.querySelector('#board').getAttribute('aria-busy')==='false');
   const events=await page.evaluate(()=>window.captureTrace.events);
   assert.deepEqual(events.map(e=>e.role+':'+e.phase+':'+e.from),[
    'attacker:start:18','attacker:finish:18','victim:start:27','victim:finish:27',
    'attacker:start:36','attacker:finish:36','victim:start:45','victim:finish:45']);
-  assert.deepEqual((await state(page)).captured,[{color:'white',king:true},{color:'white',king:false}]);
+  assert.deepEqual((await state(page)).captured,[{color:'black',king:true},{color:'black',king:false}]);
   assert.equal(await page.locator('#captured [role="listitem"]').count(),2);
   await page.reload();assert.equal(await page.locator('#captured [role="listitem"]').count(),2);
   assert.equal((await page.evaluate(()=>window.captureTrace.flights)).length,0);
   checks.push('Captura múltiple del iPad: cada salto y cada víctima en orden; damas conservadas y restauración sin repetir traslados.');await context.close();
  }
  {
-  const{page,context}=await fresh();await fixture(page,{36:['white',false],27:['black',false]});
+  const{page,context}=await fresh();await fixture(page,{36:['black',false],27:['white',false]});
   const source=await page.locator('[data-square="36"]').boundingBox(),target=await page.locator('[data-square="18"]').boundingBox();
   await page.mouse.move(source.x+source.width/2,source.y+source.height/2);await page.mouse.down();
   await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:10});await page.mouse.up();await flight(page);
   assert.equal(await page.locator('#result').isVisible(),false);assert.equal(await page.locator('#restart').isDisabled(),true);
-  const attacker=await page.locator('.capture-layer .piece.white').boundingBox();assert.ok(Math.abs(attacker.x+attacker.width/2-target.x-target.width/2)<2);
+  const attacker=await page.locator('.capture-layer .piece.black').boundingBox();assert.ok(Math.abs(attacker.x+attacker.width/2-target.x-target.width/2)<2);
   const saved=JSON.stringify(await state(page));await page.evaluate(()=>document.querySelector('[data-square="29"]').click());assert.equal(JSON.stringify(await state(page)),saved);
   await page.waitForFunction(()=>!document.querySelector('#result').hidden);
   assert.equal(await page.locator('#result-title').textContent(),'¡Has ganado!');
@@ -113,13 +118,13 @@ try{
  {
   const{page,context}=await fresh('reduce');await fixture(page,regular);await capture(page);await settled(page);
   assert.equal((await state(page)).captured.length,1);assert.equal((await page.evaluate(()=>window.captureTrace.events)).length,0);
-  assert.equal(await page.locator('[data-captured-slot="black-0"] .piece').count(),1);
+  assert.equal(await page.locator('[data-captured-slot="white-0"] .piece').count(),1);
   checks.push('Reducir movimiento: tablero y colección se actualizan instantáneamente.');await context.close();
  }
  {
   const{page,context}=await fresh();await fixture(page,regular);await capture(page);await flight(page);
   const durable=await state(page);assert.equal(durable.captured.length,1);assert.equal(durable.game.board[27],null);
-  await page.reload();assert.equal(await page.locator('[data-captured-slot="black-0"] .piece').count(),1);
+  await page.reload();assert.equal(await page.locator('[data-captured-slot="white-0"] .piece').count(),1);
   await page.waitForTimeout(1200);assert.equal((await state(page)).captured.length,1);
   assert.equal((await page.evaluate(()=>window.captureTrace.flights)).length,0);
   await fixture(page,regular);await capture(page);await flight(page);await page.setViewportSize({width:820,height:1100});await settled(page);

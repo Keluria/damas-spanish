@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#234e46" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="description" content="Damas españolas accesibles para dos personas. Juega con calma, también sin conexión." />
+  <meta name="description" content="Damas españolas accesibles contra el iPad. Juega con calma, también sin conexión." />
   <link rel="icon" href="/damas-spanish/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/damas-spanish/apple-touch-icon.png" />
   <title>Damas Españolas</title>
@@ -28,6 +28,11 @@
     <div class="actions"><button id="restart">Nueva partida</button></div>
   </main>
   <dialog id="restart-dialog" aria-labelledby="restart-title"><h2 id="restart-title">¿Empezar una partida nueva?</h2><p>Se borrará la partida actual.</p><form method="dialog"><button value="cancel" autofocus>Seguir jugando</button><button value="restart" class="secondary">Empezar de nuevo</button></form></dialog>
+  <dialog id="route-dialog" aria-labelledby="route-title" aria-describedby="route-help">
+    <h2 id="route-title"></h2>
+    <p id="route-help">Elige las fichas que quieres capturar. También puedes cancelar y jugar salto a salto.</p>
+    <form method="dialog"><div id="route-options" class="route-options"></div><button value="cancel" class="secondary">Cancelar</button></form>
+  </dialog>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

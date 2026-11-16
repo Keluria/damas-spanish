@@ -15,8 +15,8 @@ afterEach(() => vi.unstubAllGlobals());
 it('prepara una posición legal no terminada con una sola ficha de cada color', () => {
   const saved = createVictoryScenario();
   expect(validateSaved(saved)).toBe(true);
-  expect(saved.game.board.filter(piece => piece?.color === 'white')).toHaveLength(1);
   expect(saved.game.board.filter(piece => piece?.color === 'black')).toHaveLength(1);
+  expect(saved.game.board.filter(piece => piece?.color === 'white')).toHaveLength(1);
   expect(outcome(saved.game)).toBeNull();
   expect(legalMoves(saved.game)).toContainEqual(winningCapture);
   expect(legalMoves(saved.game).some(move => move.captures.length === 0)).toBe(true);
@@ -24,8 +24,8 @@ it('prepara una posición legal no terminada con una sola ficha de cada color', 
 it('la captura real de e4 a c6 elimina la última negra y produce victoria humana', () => {
   const next = applyMove(createVictoryScenario().game, winningCapture);
   expect(next.board[27]).toBeNull();
-  expect(next.board[18]).toEqual({ color: 'white', king: false });
-  expect(outcome(next)).toEqual({ winner: 'white' });
+  expect(next.board[18]).toEqual({ color: 'black', king: false });
+  expect(outcome(next)).toEqual({ winner: 'black' });
 });
 it('el escenario y su reinicio en memoria no acceden a las partidas normales', () => {
   const getItem = vi.fn(() => { throw new Error('No se debe leer localStorage'); });
@@ -35,7 +35,7 @@ it('el escenario y su reinicio en memoria no acceden a las partidas normales', (
   const selected = tapSquare(memory.loadGame().saved, 36);
   const ended = tapSquare(selected, 18);
   expect(memory.saveGame(ended)).toBe(true);
-  expect(outcome(memory.loadGame().saved.game)).toEqual({ winner: 'white' });
+  expect(outcome(memory.loadGame().saved.game)).toEqual({ winner: 'black' });
   memory.saveGame({ ...ended, game: initialGame(), from: null, path: [] });
   expect(memory.loadGame().saved.game).toEqual(initialGame());
   expect(getItem).not.toHaveBeenCalled(); expect(setItem).not.toHaveBeenCalled();

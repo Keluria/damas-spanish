@@ -1,4 +1,4 @@
-import { outcome, type Game, type Outcome } from './engine';
+import { HUMAN_COLOR, outcome, type Game, type Outcome } from './engine';
 
 export interface ResultMessage {
   title: string;
@@ -11,7 +11,7 @@ interface View {
 }
 function messageFor(result: NonNullable<Outcome>, restoring: boolean): ResultMessage {
   if ('draw' in result) return { title: '¡Tablas! Buena partida', message: '', celebrate: false };
-  if (result.winner === 'white') return { title: '¡Has ganado!', message: '¡Muy bien jugado!', celebrate: !restoring };
+  if (result.winner === HUMAN_COLOR) return { title: '¡Has ganado!', message: '¡Muy bien jugado!', celebrate: !restoring };
   return { title: 'Partida terminada', message: 'Gracias por jugar. Podemos intentarlo otra vez.', celebrate: false };
 }
 

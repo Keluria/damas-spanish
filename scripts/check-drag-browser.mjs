@@ -31,7 +31,7 @@ async function fresh(options = {}) {
     };
     const animate = Element.prototype.animate;
     Element.prototype.animate = function(frames, options) {
-      window.inputTrace.animations.push({ color: this.classList.contains('white') ? 'white' : 'black', duration: options.duration });
+      window.inputTrace.animations.push({ color: this.classList.contains('black') ? 'black' : 'white', duration: options.duration });
       return animate.call(this, frames, options);
     };
     const capture = Element.prototype.setPointerCapture;
@@ -56,12 +56,12 @@ async function begin(page, source) {
 }
 async function finish(page, target) { await page.mouse.move(target.x, target.y, { steps: 8 }); await page.mouse.up(); }
 async function settle(page) { await page.waitForFunction(() => !document.querySelector('.drag-layer') && !document.querySelector('#restart').disabled); }
-async function fixture(page, pieces, turn = 'white', from = null, path = []) {
+async function fixture(page, pieces, turn = 'black', from = null, path = []) {
   await page.evaluate(({ pieces, turn, from, path, key }) => {
     const board = Array(64).fill(null);
     for (const [i, [color, king]] of Object.entries(pieces)) board[Number(i)] = { color, king };
-    const position = turn + ':' + board.map(p => p ? (p.color === 'white' ? (p.king ? 'W' : 'w') : (p.king ? 'B' : 'b')) : '.').join('');
-    localStorage.setItem(key, JSON.stringify({ version: 1, game: { board, turn, positions: [position] }, from, path }));
+    const position = turn + ':' + board.map(p => p ? (p.color === 'black' ? (p.king ? 'B' : 'b') : (p.king ? 'W' : 'w')) : '.').join('');
+    localStorage.setItem(key, JSON.stringify({ version: 2, game: { board, turn, positions: [position] }, from, path }));
   }, { pieces, turn, from, path, key });
   await page.reload();
 }
@@ -78,22 +78,22 @@ try {
     assert.equal(await page.locator('.drag-layer').count(),1);
     await page.mouse.move(start.x - 35, start.y - 35);
     await page.waitForFunction(({x, y}) => { const r = document.querySelector('.drag-layer .piece').getBoundingClientRect(); return Math.abs(r.x+r.width/2-x)<2 && Math.abs(r.y+r.height/2-y)<2; }, {x:start.x-35,y:start.y-35});
-    assert.equal(await page.locator('#board .piece.white').count() + await page.locator('.drag-layer .piece.white').count(), 12);
+    assert.equal(await page.locator('#board .piece.black').count() + await page.locator('.drag-layer .piece.black').count(), 12);
     await page.screenshot({ path: output + '/following-pointer.png' });
     await finish(page, target); await settle(page);
-    assert.equal((await state(page)).game.board[32]?.color, 'white');
+    assert.equal((await state(page)).game.board[32]?.color, 'black');
     const trace = await page.evaluate(() => window.inputTrace);
-    assert.equal(trace.animations.filter(a=>a.color==='white').length, 0);
-    assert.equal(trace.writes.filter(s=>s.game.turn==='black').length, 1);
+    assert.equal(trace.animations.filter(a=>a.color==='black').length, 0);
+    assert.equal(trace.writes.filter(s=>s.game.turn==='white').length, 1);
     assert.ok(trace.captures.length > 0);
     const machineSource=await centre(page,16), machineTarget=await centre(page,25);
     await page.mouse.move(machineSource.x,machineSource.y);await page.mouse.down();
     await page.mouse.move(machineTarget.x,machineTarget.y,{steps:4});
     assert.equal(await page.locator('.drag-layer').count(),0);await page.mouse.up();
     assert.equal((await page.evaluate(()=>window.inputTrace.captures)).length,trace.captures.length);
-    await page.waitForFunction(() => document.querySelector('#status').textContent === 'Tu turno · blancas');
-    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='black').length, 1);
-    checks.push('Ratón: seguimiento real, destinos visibles, captura de puntero, una jugada y una respuesta IA; sin animación blanca duplicada.');
+    await page.waitForFunction(() => document.querySelector('#status').textContent === 'Tu turno · negras');
+    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='white').length, 1);
+    checks.push('Ratón: seguimiento real, destinos visibles, captura de puntero, una jugada y una respuesta IA; sin animación negra duplicada.');
     await context.close();
   }
   for (const target of [33, 43, 'outside']) {
@@ -102,29 +102,29 @@ try {
     const before=await raw(page);
     await begin(page,41); await finish(page,target==='outside'?{x:3,y:3}:await centre(page,target));
     await settle(page); assert.equal(await raw(page),before);
-    assert.equal(await page.locator('[data-square="41"] .piece.white').count(),1);
+    assert.equal(await page.locator('[data-square="41"] .piece.black').count(),1);
     const trace=await page.evaluate(()=>window.inputTrace);
-    assert.equal(trace.animations.filter(a=>a.color==='white'&&a.duration===180).length,1);
+    assert.equal(trace.animations.filter(a=>a.color==='black'&&a.duration===180).length,1);
     checks.push('Suelta inválida '+target+': retorno suave sin modificar partida ni selección.'); await context.close();
   }
   {
-    const {page, context}=await fresh(); await fixture(page,{36:['white',false],27:['black',false]});
+    const {page, context}=await fresh(); await fixture(page,{36:['black',false],27:['white',false]});
     await begin(page,36); await finish(page,await centre(page,18)); await settle(page);
     await page.waitForFunction(()=>!document.querySelector('#result').hidden);
     assert.equal(await page.locator('#result-title').textContent(),'¡Has ganado!');
     assert.equal((await state(page)).game.board[27],null);
-    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='white').length,0);
+    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='black').length,0);
     assert.equal(await page.getByRole('button').count(),1);
     await page.waitForTimeout(100); assert.equal(await page.locator('#result').isVisible(),true);
     await page.waitForTimeout(500);await page.screenshot({path:output+'/capture-victory.png'});
-    checks.push('Captura por arrastre elimina la última negra y conserva la celebración, sin clic fantasma ni reinicio accidental.');await context.close();
+    checks.push('Captura por arrastre elimina la última blanca y conserva la celebración, sin clic fantasma ni reinicio accidental.');await context.close();
   }
   {
     const {page,context}=await fresh();const start=await centre(page,41);
     await page.mouse.move(start.x,start.y);await page.mouse.down();
     await page.mouse.move(start.x+3,start.y+2);await page.mouse.up();
     assert.equal(await page.locator('.drag-layer').count(),0);
-    assert.equal((await state(page)).from,41);assert.equal((await state(page)).game.turn,'white');
+    assert.equal((await state(page)).from,41);assert.equal((await state(page)).game.turn,'black');
     checks.push('Temblor inferior al umbral: sigue siendo selección por pulsación, sin movimiento involuntario.');await context.close();
   }
   {
@@ -135,21 +135,21 @@ try {
     checks.push('Escape antes del umbral cancela también el clic posterior, sin guardar una selección accidental.');await context.close();
   }
   {
-    const {page,context}=await fresh();const pieces={54:['white',false],45:['black',false],27:['black',false]};
+    const {page,context}=await fresh();const pieces={54:['black',false],45:['white',false],27:['white',false]};
     await fixture(page,pieces);await begin(page,54);await finish(page,await centre(page,36));await settle(page);
-    assert.deepEqual((await state(page)).path,[36]);assert.equal((await state(page)).game.turn,'white');
+    assert.deepEqual((await state(page)).path,[36]);assert.equal((await state(page)).game.turn,'black');
     await page.waitForTimeout(750);assert.deepEqual((await state(page)).path,[36]);
     await page.locator('[data-square="36"]').click();
-    assert.equal((await state(page)).game.turn,'black');assert.deepEqual((await state(page)).path,[]);
+    assert.equal((await state(page)).game.turn,'white');assert.deepEqual((await state(page)).path,[]);
     await fixture(page,pieces);await begin(page,54);await finish(page,await centre(page,36));await settle(page);
     await begin(page,36);assert.equal(await page.locator('[data-square="18"].destination').count(),1);
     await finish(page,await centre(page,18));await settle(page);
     assert.equal(await page.locator('#result-title').textContent(),'¡Has ganado!');
-    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='white').length,0);
+    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='black').length,0);
     checks.push('Cadena opcional: sin clic fantasma que termine el turno; permite parar tocando o continuar arrastrando desde la casilla actual.');await context.close();
   }
   {
-    const {page, context}=await fresh(); await fixture(page,{0:['white',true],2:['black',false]});
+    const {page, context}=await fresh(); await fixture(page,{0:['black',true],2:['white',false]});
     await begin(page,0); assert.equal(await page.locator('[data-square="54"].destination').count(),1);
     await finish(page,await centre(page,54));await settle(page);
     assert.equal((await state(page)).game.board[54]?.king,true);
@@ -158,17 +158,17 @@ try {
   {
     const {page, context}=await fresh();
     await page.locator('[data-square="41"]').click();await page.locator('[data-square="32"]').click();
-    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='black');
-    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='white').length,1);
-    assert.equal((await page.evaluate(()=>window.inputTrace.writes)).filter(s=>s.game.turn==='black').length,1);
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='white');
+    assert.equal((await page.evaluate(()=>window.inputTrace.animations)).filter(a=>a.color==='black').length,1);
+    assert.equal((await page.evaluate(()=>window.inputTrace.writes)).filter(s=>s.game.turn==='white').length,1);
     checks.push('Dos pulsaciones nativas conservadas, con una única animación y jugada.');await context.close();
   }
   {
     const {page,context}=await fresh();
     await page.locator('[data-square="41"]').focus();await page.locator('[data-square="41"]').press('Enter');
     await page.locator('[data-square="32"]').focus();await page.locator('[data-square="32"]').press('Space');
-    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='black');
-    assert.equal((await state(page)).game.board[32]?.color,'white');
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='white');
+    assert.equal((await state(page)).game.board[32]?.color,'black');
     checks.push('Teclado: selección con Enter y destino con Espacio.');await context.close();
   }
   {
@@ -195,7 +195,7 @@ try {
     await touch(session,'touchStart',start);await touch(session,'touchMove',{x:start.x-15,y:start.y-15});
     await page.waitForFunction(()=>document.querySelector('.drag-layer'));
     await touch(session,'touchMove',end);await touch(session,'touchEnd');await settle(page);
-    assert.equal((await state(page)).game.board[32]?.color,'white');assert.equal(await page.evaluate(()=>scrollY),y);
+    assert.equal((await state(page)).game.board[32]?.color,'black');assert.equal(await page.evaluate(()=>scrollY),y);
     const oldY=await page.evaluate(()=>scrollY);
     await touch(session,'touchStart',{x:5,y:450});
     for(let i=1;i<=6;i++){await touch(session,'touchMove',{x:5,y:450-i*25});await page.waitForTimeout(25);}
@@ -208,7 +208,7 @@ try {
     await touch(session,'touchStart',start);await touch(session,'touchMove',{x:start.x-20,y:start.y-20});await page.waitForFunction(()=>document.querySelector('.drag-layer'));
     await touch(session,'touchCancel');await settle(page);assert.equal(await raw(page),before);
     await page.locator('[data-square="41"]').tap();await page.locator('[data-square="32"]').tap();
-    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='black');
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('damas-spanish.game.v1')).game.turn==='white');
     checks.push('Pointercancel táctil restaura y permite después jugar por dos toques.');await context.close();
   }
   assert.deepEqual(errors,[]);await writeFile(output+'/checks.json',JSON.stringify({checks,errors},null,2));console.log(JSON.stringify({checks,errors},null,2));

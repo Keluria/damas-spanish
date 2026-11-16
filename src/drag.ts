@@ -115,7 +115,7 @@ export function installDragging(board: HTMLElement, effects: Effects) {
     settling = true;
     // A multi-jump shortcut must show the real route, not a straight drag across victims.
     // Bring the original token home smoothly first, retaining the lock until all jumps end.
-    if (destinationPaths(g.plan.selection).get(destination)!.length > 1) await returnHome(g, false, true);
+    if (destinationPaths(g.plan.selection).get(destination)!.some(path => path.length > 1)) await returnHome(g, false, true);
     else remove(g);
     try {
       // Single jumps keep the displacement already performed by the user.
@@ -138,7 +138,7 @@ export function installDragging(board: HTMLElement, effects: Effects) {
   const preference = () => { if (reduced.matches) immediateCancel(); };
   const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && gesture) { event.preventDefault(); void cancel(false); } };
   // A drag's compatibility click may be retargeted after rendering (even to another control).
-  document.addEventListener('pointerdown', () => { if (!gesture && !settling) suppressClick = false; }, true);
+  document.addEventListener('pointerdown', () => { if (!gesture) suppressClick = false; }, true);
   document.addEventListener('click', event => {
     if (suppressClick && event.detail !== 0) {
       suppressClick = false; event.preventDefault(); event.stopImmediatePropagation();

@@ -31,7 +31,8 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 
 ## Accesibilidad
 - Fichas grandes, alto contraste y grandes zonas táctiles.
-- Selección por dos pulsaciones, sin arrastrar.
+- Selección por dos pulsaciones y teclado, con arrastre opcional mediante Pointer Events.
+- Arrastre solo para fichas humanas y destinos legales; sueltas inválidas o canceladas no cambian el guardado.
 - Sin anuncios, temporizadores, penalizaciones ni distracciones.
 - Resaltar movimientos permitidos.
 - Dificultad baja para jugar contra la máquina.

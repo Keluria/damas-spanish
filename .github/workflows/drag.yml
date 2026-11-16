@@ -1,0 +1,35 @@
+name: Verify drag input
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drag:
+    name: Check drag, touch and taps in Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/check-pages.mjs
+      - name: Install browser test tooling without changing the lockfile
+        run: npm install --no-save --package-lock=false playwright@1.65.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/check-drag-browser.mjs
+      - name: Keep drag screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drag-checks
+          path: work/drag-checks/
+          if-no-files-found: ignore

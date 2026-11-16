@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "dev:victory": "vite --config vite.victory.config.ts --host 0.0.0.0",
-    "test:victory:browser": "npm run build && node scripts/check-victory-browser.mjs"
+    "test:victory:browser": "npm run build && node scripts/check-victory-browser.mjs",
+    "test:drag:browser": "npm run build && node scripts/check-drag-browser.mjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

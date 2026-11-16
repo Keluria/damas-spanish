@@ -3,6 +3,7 @@ import type { SavedGame } from './storage';
 
 export interface VisualMove { from: number; to: number; captured?: number }
 export type Cleanup = () => void;
+export interface TapOptions { animate?: boolean }
 
 export function moveDuration(move: VisualMove): number {
   const squares = Math.abs(Math.floor(move.to / 8) - Math.floor(move.from / 8));
@@ -21,7 +22,7 @@ export function animatedInput(effects: Effects) {
   let busy = false;
   return {
     get busy() { return busy; },
-    async tap(square: number) {
+    async tap(square: number, options: TapOptions = {}) {
       if (busy) return; // Ignore input rather than queueing unintended turns.
       const before = effects.current();
       const next = tapSquare(before, square);
@@ -39,7 +40,9 @@ export function animatedInput(effects: Effects) {
       try {
         // Durable before motion starts: reloading during a jump restores the chosen move.
         effects.persist(next);
-        cleanup = await effects.animate({ from, to: square, captured: option.captures[before.path.length] });
+        if (options.animate !== false) {
+          cleanup = await effects.animate({ from, to: square, captured: option.captures[before.path.length] });
+        }
       } catch {
         // An unavailable/cancelled animation never rolls back or changes a legal move.
       } finally {

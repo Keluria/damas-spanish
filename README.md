@@ -10,7 +10,7 @@ Crear una aplicación sencilla, accesible y fácil de utilizar, que permita juga
 - Variante simplificada fija de las damas españolas: capturas opcionales y sin prioridades.
 - Partidas contra el iPad: el humano lleva blancas y empieza; el iPad lleva negras.
 - Fichas grandes y controles táctiles.
-- Movimientos mediante dos pulsaciones.
+- Movimientos mediante dos pulsaciones o arrastrar y soltar.
 - Indicaciones visuales de los movimientos permitidos.
 - Guardado automático de partidas.
 - Funcionamiento sin conexión mediante PWA.
@@ -127,7 +127,7 @@ Las nuevas versiones del service worker esperan a que se cierren las ventanas de
 
 - Hay una única dificultad fácil y no hay rotación del tablero: el humano lleva blancas abajo. La IA no busca varias jugadas por adelantado, no adapta su dificultad y no garantiza siempre la mejor decisión.
 - La triple repetición se resuelve automáticamente. **No se implementan aún los otros supuestos reglamentarios de tablas**, incluidos los límites de movimientos sin capturas/avance de peón y los finales de material específicos. Por tanto, esta versión no es todavía un motor reglamentario completo para competición.
-- No hay ajustes para el cuidador, selectores de reglas ni menús. Se conservan fichas grandes, contraste alto, etiquetas accesibles y foco de teclado. No hay sonidos, reloj ni arrastre. Las marcas indican selección y destinos sin depender solo del color.
+- No hay ajustes para el cuidador, selectores de reglas ni menús. Se conservan fichas grandes, contraste alto, etiquetas accesibles y foco de teclado. No hay sonidos ni reloj. Las marcas indican selección y destinos sin depender solo del color.
 - El tablero se adapta al ancho; está optimizado para iPad. En teléfonos pequeños las casillas pueden medir menos de 44 px.
 - Compatibilidad prevista con Safari/iPadOS 18; falta validar en el iPad físico de 2019 y con VoiceOver. Las pruebas en Chromium no sustituyen esa comprobación.
 - El historial de repetición se conserva hasta un movimiento irreversible; no hay deshacer ni historial visible de jugadas.
@@ -193,3 +193,28 @@ npm run test:victory:browser
 ```
 
 La prueba verifica la captura y las estrellas reales, el botón único y el reinicio directo, que la partida existente permanezca intacta, que la recarga reponga el escenario, que la compilación especial esté bloqueada y que parámetros URL no activen la prueba en el artefacto de producción.
+
+
+## Arrastrar y soltar
+
+Se puede mover con dos pulsaciones, con teclado (Enter/Espacio sobre las casillas) o arrastrando con el dedo o el ratón. Un desplazamiento inferior a **8 píxeles CSS** conserva el comportamiento de pulsación. Al arrastrar, la ficha original sigue al puntero y los destinos legales permanecen resaltados; no se crea una copia visible.
+
+Solo una suelta sobre un destino legal confirma la jugada mediante la interacción y el motor existentes. La suelta válida se guarda una sola vez como movimiento y no reproduce otra vez la animación de desplazamiento. Una casilla ilegal, ocupada o una suelta fuera del tablero devuelve la ficha suavemente en unos 180 ms y conserva tanto la partida como su selección anterior. Con Reducir movimiento el retorno es instantáneo.
+
+Las capturas siguen siendo opcionales. En una cadena se puede arrastrar la ficha desde su casilla actual hacia otro salto legal o terminar tocándola, como antes. No se arrastra durante el turno del iPad ni durante una animación. Nueva partida se desactiva brevemente durante el arrastre y el retorno, evitando reinicios a mitad del gesto.
+
+La captura del puntero se realiza sobre el tablero para conservarla aunque se reconstruyan sus casillas. Solo las casillas de fichas humanas que pueden moverse desactivan el desplazamiento táctil; el resto de la página conserva su navegación habitual. Pointercancel, pérdida de captura, Escape, pérdida de foco, ocultación de la página y cambios de tamaño/orientación cancelan el gesto sin cambiar el guardado. La ficha flotante solo usa transform y se actualiza como máximo una vez por fotograma.
+
+### Comprobación de arrastre
+
+Además de `npm test`, `npm run build` y `node scripts/check-pages.mjs`, la integración con Playwright se ejecuta sobre el artefacto real de producción:
+
+```sh
+npm install --no-save --package-lock=false playwright@1.65.1
+npx playwright install chromium
+npm run test:drag:browser
+```
+
+El workflow **Verify drag input** ejecuta esa comprobación en Chromium y conserva capturas y resultados como artefacto **drag-checks**. Cubre arrastre válido, inválido y fuera del tablero, seguimiento del puntero, captura, dama de largo alcance, cadena opcional, ausencia de jugadas duplicadas, dos pulsaciones, teclado, turno del iPad, cancelaciones y reducción de movimiento. Usa eventos táctiles nativos de Chromium para comprobar el arrastre con el dedo y que la página sigue desplazándose fuera del tablero.
+
+Esta emulación táctil no sustituye la comprobación física de Safari/iPadOS 18 y VoiceOver en el iPad de 2019, que sigue pendiente. La estética de madera, la celebración, las reglas y el formato del guardado se conservan.

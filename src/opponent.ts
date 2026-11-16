@@ -1,11 +1,12 @@
 import { chooseEasyMove } from './ai';
+import type { TapOptions } from './animation';
 import { initialGame, legalMoves, outcome, type Move } from './engine';
 import { candidates } from './interaction';
 import type { SavedGame } from './storage';
 
 interface Options {
   current(): SavedGame;
-  tap(square: number): Promise<void>;
+  tap(square: number, options?: TapOptions): Promise<void>;
   busy(): boolean;
   replace(saved: SavedGame): void;
   choose?(saved: SavedGame, moves: readonly Move[]): Move;
@@ -58,9 +59,9 @@ export function ipadOpponent(options: Options) {
     }
   }
   return {
-    async humanTap(square: number) {
+    async humanTap(square: number, tapOptions?: TapOptions) {
       if (suspended || running || options.busy() || options.current().game.turn !== 'white') return;
-      await options.tap(square);
+      await options.tap(square, tapOptions);
       schedule();
     },
     resume() { suspended = false; schedule(); },

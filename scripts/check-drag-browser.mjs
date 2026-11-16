@@ -74,6 +74,8 @@ try {
     const { page, context } = await fresh();
     const target = await centre(page, 32), start = await begin(page, 41);
     assert.equal(await page.locator('[data-square="32"].destination').count(), 1);
+    await page.evaluate(()=>{const id=window.inputTrace.captures.at(-1);document.querySelector('[data-square="16"]').dispatchEvent(new PointerEvent('lostpointercapture',{bubbles:true,pointerId:id}));});
+    assert.equal(await page.locator('.drag-layer').count(),1);
     await page.mouse.move(start.x - 35, start.y - 35);
     await page.waitForFunction(({x, y}) => { const r = document.querySelector('.drag-layer .piece').getBoundingClientRect(); return Math.abs(r.x+r.width/2-x)<2 && Math.abs(r.y+r.height/2-y)<2; }, {x:start.x-35,y:start.y-35});
     assert.equal(await page.locator('#board .piece.white').count() + await page.locator('.drag-layer .piece.white').count(), 12);
@@ -171,11 +173,14 @@ try {
   }
   {
     const {page,context}=await fresh();const before=await raw(page);await begin(page,41);
-    await page.setViewportSize({width:820,height:1100});await settle(page);
+    await page.setViewportSize({width:820,height:1100});await settle(page);await page.mouse.up();
     assert.equal(await raw(page),before);
-    await begin(page,41);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await settle(page);
+    await begin(page,41);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await settle(page);await page.mouse.up();
     assert.equal(await raw(page),before);
-    checks.push('Redimensionado/orientación y pérdida de foco cancelan sin alterar el guardado.');await context.close();
+    await begin(page,41);
+    await page.evaluate(()=>{const id=window.inputTrace.captures.at(-1);document.querySelector('#board').releasePointerCapture(id);});
+    await page.mouse.move(300,400);await settle(page);await page.mouse.up();assert.equal(await raw(page),before);
+    checks.push('Redimensionado/orientación, pérdida de foco y pérdida real de captura cancelan sin alterar el guardado.');await context.close();
   }
   {
     const {page,context}=await fresh({reducedMotion:'reduce'});const before=await raw(page);

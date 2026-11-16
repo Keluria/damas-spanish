@@ -125,6 +125,8 @@ export function installDragging(board: HTMLElement, effects: Effects) {
     if (destination !== null) effects.tap(destination);
   }
   function pointerCancel(event: PointerEvent) {
+    // Ignore bubbled child losses and stale losses while this board still owns capture.
+    if (event.type === 'lostpointercapture' && (event.target !== board || board.hasPointerCapture(event.pointerId))) return;
     if (gesture?.id === event.pointerId) void cancel(event.type === 'lostpointercapture');
   }
   const immediateCancel = () => { void cancel(true); };

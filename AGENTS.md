@@ -14,11 +14,12 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 
 ## Reglas
 - Tablero de 8x8 y 12 fichas por jugador.
-- Damas españolas tradicionales.
+- Variante simplificada fija de las damas españolas, adaptada para una persona mayor con Alzheimer.
 - Movimiento diagonal hacia delante de los peones.
 - Damas de largo alcance.
-- Capturas obligatorias y encadenadas.
-- Aplicar la ley de la cantidad y, en caso de empate, la ley de la calidad.
+- Capturas opcionales: cualquier ficha propia puede realizar un movimiento legal aunque haya capturas disponibles.
+- Sin leyes de cantidad ni calidad.
+- Se puede terminar una captura múltiple tras cualquier salto tocando de nuevo la ficha movida; también se puede continuar por los destinos resaltados.
 - Coronación, fin de partida y reglas de empate.
 - Separar la lógica de reglas de la interfaz y crear pruebas automatizadas.
 
@@ -30,7 +31,7 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Dificultad baja para jugar contra la máquina.
 - Botones grandes y confirmación antes de reiniciar.
 - Guardado automático y recuperación de partida.
-- Ajustes sencillos para el cuidador.
+- Pantalla limitada a tablero, indicador del turno y botón grande «Nueva partida». Sin ajustes, selectores de reglas, menús ocultos ni PIN.
 
 ## Desarrollo
 1. Crear tablero y motor de reglas.

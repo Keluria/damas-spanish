@@ -7,9 +7,8 @@ Crear una aplicación sencilla, accesible y fácil de utilizar, que permita juga
 
 ## Características
 - Tablero tradicional de 8 × 8 casillas.
-- Reglas oficiales de las damas españolas.
-- Partidas contra el ordenador.
-- Diferentes niveles de dificultad.
+- Variante simplificada fija de las damas españolas: capturas opcionales y sin prioridades.
+- Partidas locales para dos personas; rival automático pendiente.
 - Fichas grandes y controles táctiles.
 - Movimientos mediante dos pulsaciones.
 - Indicaciones visuales de los movimientos permitidos.
@@ -67,19 +66,20 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 
 ### Arquitectura
 
-- `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, prioridades, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` define el punto de entrada de una futura IA.
-- `src/main.ts`: interacción por dos pulsaciones, guía paso a paso en capturas encadenadas, ayuda, contraste reforzado y confirmación antes de reiniciar.
-- `src/storage.ts`: guardado local versionado y validado. Conserva también la selección y el progreso de una captura múltiple; los datos inválidos se descartan con aviso y el almacenamiento bloqueado no impide jugar.
+- `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, capturas opcionales, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` define el punto de entrada de una futura IA.
+- `src/interaction.ts`: selección por dos pulsaciones y capturas encadenadas opcionales, sin dependencia del DOM.
+- `src/main.ts`: tablero, indicador del turno y botón grande «Nueva partida» con confirmación. Sin ajustes, selector de reglas, menús ocultos ni PIN. Solo se muestran avisos adicionales si no se puede guardar o recuperar la partida.
+- `src/storage.ts`: guardado local versionado y validado. Conserva también la selección y el progreso de una captura múltiple; mantiene la compatibilidad con el formato anterior. Los datos inválidos se descartan con aviso y el almacenamiento bloqueado no impide jugar.
 - `src/*.test.ts`: pruebas del motor y de la persistencia.
 - `vite.config.ts`: configuración de Vite y PWA con Workbox.
 
 ### Reglas de esta versión
 
-Se juega en casillas claras, con la casilla inferior derecha jugable. Blancas empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. Es obligatorio completar la secuencia que capture más fichas y, a igualdad de cantidad, más damas. Se conservan todas las alternativas empatadas. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
+Se juega en casillas claras, con la casilla inferior derecha jugable. Blancas empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. La captura es **opcional**: se puede mover cualquier ficha propia a un destino legal aunque haya capturas. No se aplican las leyes de cantidad ni calidad. Después de cada salto de una captura múltiple se puede continuar tocando otro destino marcado o terminar el turno **tocando de nuevo la ficha que acaba de saltar**. El indicador del turno explica ambas opciones. Si no quedan saltos posibles, el turno termina automáticamente. Durante una cadena no se puede cambiar de ficha ni añadir movimientos sin captura. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
 
 ### Instalación y uso sin conexión
 
-En Safari del iPad, cargar una vez con conexión y esperar el mensaje «Juego preparado para abrirse sin conexión» en Ayuda. Después, Compartir → Añadir a pantalla de inicio. El service worker solo funciona en HTTPS o localhost y se genera en compilación, no durante `npm run dev`. Para comprobarlo localmente, usar `npm run build` y `npm run preview`, cargar la aplicación y volver a abrirla sin red.
+En Safari del iPad, cargar una vez con conexión y dejar que termine la carga inicial. Después, Compartir → Añadir a pantalla de inicio. La interfaz no muestra menús de ayuda ni controles de instalación. El service worker solo funciona en HTTPS o localhost y se genera en compilación, no durante `npm run dev`. Para comprobarlo localmente, usar `npm run build` y `npm run preview`, cargar la aplicación y volver a abrirla sin red.
 
 Las nuevas versiones del service worker esperan a que se cierren las ventanas de la versión anterior; no se recarga una partida de forma automática. Safari puede eliminar el almacenamiento y la caché por políticas del sistema. No hay sincronización, exportación ni copia en la nube. El guardado es propio de cada origen y navegador.
 
@@ -87,7 +87,7 @@ Las nuevas versiones del service worker esperan a que se cierren las ventanas de
 
 - No hay rival automático, elección de dificultad ni rotación del tablero: ambos jugadores comparten el iPad y las blancas están abajo.
 - La triple repetición se resuelve automáticamente. **No se implementan aún los otros supuestos reglamentarios de tablas**, incluidos los límites de movimientos sin capturas/avance de peón y los finales de material específicos. Por tanto, esta versión no es todavía un motor reglamentario completo para competición.
-- Contraste reforzado es el único ajuste para el cuidador. No hay sonidos, reloj ni arrastre. Las marcas indican selección y destinos sin depender solo del color.
+- No hay ajustes para el cuidador, selectores de reglas ni menús. Se conservan fichas grandes, contraste alto, etiquetas accesibles y foco de teclado. No hay sonidos, reloj ni arrastre. Las marcas indican selección y destinos sin depender solo del color.
 - El tablero se adapta al ancho; está optimizado para iPad. En teléfonos pequeños las casillas pueden medir menos de 44 px.
 - Compatibilidad prevista con Safari/iPadOS 18; falta validar en el iPad físico de 2019 y con VoiceOver. Las pruebas en Chromium no sustituyen esa comprobación.
 - El historial de repetición se conserva hasta un movimiento irreversible; no hay deshacer ni historial visible de jugadas.
@@ -114,7 +114,7 @@ Las pull requests ejecutan las comprobaciones sin publicar. El trabajo de compil
 2. En **Actions**, abrir la ejecución **Deploy PWA to GitHub Pages** correspondiente a ese commit de `main`.
 3. Comprobar que **Test and build** y **Deploy to GitHub Pages** terminan en verde. Si el entorno `github-pages` exige aprobación, autorizar ese despliegue desde GitHub.
 4. Abrir el enlace del entorno mostrado en el trabajo de despliegue. La dirección prevista es **https://keluria.github.io/damas-spanish/**.
-5. En Safari del iPad Pro, comprobar tablero, fichas y ayuda. En Ayuda, esperar «Juego preparado para abrirse sin conexión» y usar Compartir → Añadir a pantalla de inicio.
+5. En Safari del iPad Pro, comprobar tablero, indicador del turno y botón «Nueva partida». Dejar que termine la primera carga con conexión y usar Compartir → Añadir a pantalla de inicio.
 6. Mover una ficha, cerrar y volver a abrir para comprobar el guardado. Activar modo avión, cerrar y volver a abrir desde el icono instalado para comprobar el funcionamiento offline. Desactivar modo avión después de la prueba.
 
 El comprobador del artefacto detecta rutas y archivos incorrectos antes de publicar; no sustituye la prueba real de instalación, caché y funcionamiento offline en Safari. La caché y el guardado del sitio publicado son independientes de los del servidor local. Para recibir futuras actualizaciones, recuperar la conexión y cerrar todas las ventanas de la versión anterior antes de volver a abrir la aplicación.

@@ -25,7 +25,7 @@ function pieceDirections(piece: Piece) {
 function captureSequences(board: Board, from: number, piece: Piece): Move[] {
   const result: Move[] = [];
   function visit(at: number, path: number[], captured: number[]) {
-    let extended = false;
+    if (captured.length) result.push({ from, path, captures: captured });
     for (const [dr, dc] of pieceDirections(piece)) {
       let r = row(at) + dr, c = col(at) + dc;
       let victim = -1;
@@ -37,7 +37,6 @@ function captureSequences(board: Board, from: number, piece: Piece): Move[] {
           if (victim !== -1 || occupant.color === piece.color || captured.includes(index)) break;
           victim = index;
         } else if (victim !== -1) {
-          extended = true;
           visit(index, [...path, index], [...captured, victim]);
           if (!piece.king) break;
         } else if (!piece.king) break;
@@ -45,7 +44,6 @@ function captureSequences(board: Board, from: number, piece: Piece): Move[] {
         r += dr; c += dc;
       }
     }
-    if (!extended && captured.length) result.push({ from, path, captures: captured });
   }
   visit(from, [], []);
   return result;
@@ -64,12 +62,8 @@ export function legalMoves(game: Pick<Game, 'board' | 'turn'>): Move[] {
       }
     }
   });
-  if (!captures.length) return quiet;
-  const quantity = Math.max(...captures.map(m => m.captures.length));
-  const byQuantity = captures.filter(m => m.captures.length === quantity);
-  const kings = (m: Move) => m.captures.filter(i => game.board[i]?.king).length;
-  const quality = Math.max(...byQuantity.map(kings));
-  return byQuantity.filter(m => kings(m) === quality);
+  // Every capture prefix is a valid stopping point; quiet moves stay available.
+  return [...captures, ...quiet];
 }
 export function outcome(game: Game): Outcome {
   if (!legalMoves(game).length) return { winner: opposite(game.turn) };

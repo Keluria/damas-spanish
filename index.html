@@ -12,14 +12,12 @@
 </head>
 <body>
   <main>
-    <header><div><p class="eyebrow">JUGAR CON CALMA</p><h1>Damas españolas</h1></div><span class="local">Dos personas</span></header>
     <section class="game" aria-label="Partida de damas">
-      <div class="turn"><span id="turn-piece" aria-hidden="true"></span><div><h2 id="status" aria-live="polite" aria-atomic="true"></h2><p id="hint"></p></div></div>
+      <div class="turn" aria-live="polite" aria-atomic="true"><span id="turn-piece" aria-hidden="true"></span><div><h2 id="status"></h2><p id="hint"></p></div></div>
       <div id="board" class="board" role="group" aria-label="Tablero de ocho filas y ocho columnas"></div>
-      <p id="save-status" class="save" role="status"></p>
+      <p id="save-status" class="save" role="status" hidden></p>
     </section>
-    <div class="actions"><button id="restart" class="secondary">Nueva partida</button><button id="help" class="secondary">Cómo jugar</button></div>
-    <details id="instructions"><summary>Ayuda y ajustes para el cuidador</summary><p>Toca una ficha y después una casilla marcada. En una captura múltiple, sigue las marcas hasta terminar. Las blancas empiezan y avanzan hacia arriba; las negras, hacia abajo.</p><p>Es obligatorio capturar el mayor número de fichas. Si hay empate, se debe capturar el mayor número de damas. La dama, marcada con una corona, recorre diagonales largas. Los peones solo mueven y capturan hacia delante.</p><label><input id="contrast" type="checkbox" /> Contraste reforzado</label><p>Para instalar en el iPad: en Safari, abre Compartir y elige «Añadir a pantalla de inicio». La primera carga necesita conexión.</p><p id="offline-status" role="status">Preparando el juego sin conexión…</p><p>Sin rival automático todavía. La partida se guarda en este dispositivo y navegador.</p></details>
+    <div class="actions"><button id="restart">Nueva partida</button></div>
   </main>
   <dialog id="restart-dialog" aria-labelledby="restart-title"><h2 id="restart-title">¿Empezar una partida nueva?</h2><p>Se borrará la partida actual.</p><form method="dialog"><button value="cancel" autofocus>Seguir jugando</button><button value="restart" class="secondary">Empezar de nuevo</button></form></dialog>
   <script type="module" src="/src/main.ts"></script>

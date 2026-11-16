@@ -1,6 +1,7 @@
 import './style.css';
+import { animatedInput, animatePiece } from './animation';
 import { legalMoves, outcome, type Board } from './engine';
-import { candidates, tapSquare } from './interaction';
+import { candidates } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { initialGame } from './engine';
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -10,8 +11,8 @@ let warning = loaded.warning;
 const boardEl = el('board');
 const name = (color: string) => color === 'white' ? 'blancas' : 'negras';
 const squareName = (i: number) => `${'abcdefgh'[i % 8]}${8 - Math.floor(i / 8)}`;
-function persist() {
-  const notice = saveGame(saved) ? warning : 'No se puede guardar. Mantén esta ventana abierta para conservar la partida.';
+function persist(next = saved) {
+  const notice = saveGame(next) ? warning : 'No se puede guardar. Mantén esta ventana abierta para conservar la partida.';
   el('save-status').textContent = notice;
   el('save-status').hidden = !notice;
 }
@@ -54,16 +55,23 @@ function render(focus?: number) {
     } else cell.setAttribute('aria-hidden', 'true');
     boardEl.append(cell);
   }
-  persist();
   if (focus !== undefined) boardEl.querySelector<HTMLButtonElement>(`[data-square="${focus}"]`)?.focus({ preventScroll: true });
 }
-function click(i: number) {
-  saved = tapSquare(saved, i);
-  render(i);
-}
-const dialog = el<HTMLDialogElement>('restart-dialog');
-el('restart').addEventListener('click', () => { dialog.returnValue = ''; dialog.showModal(); });
-dialog.addEventListener('close', () => {
-  if (dialog.returnValue === 'restart') { saved = { version: 1, game: initialGame(), from: null, path: [] }; warning = ''; render(); }
+const input = animatedInput({
+  current: () => saved,
+  persist,
+  present: (next, focus) => { saved = next; render(focus); },
+  animate: move => animatePiece(boardEl, move),
+  setBusy: busy => {
+    boardEl.setAttribute('aria-busy', String(busy));
+    el<HTMLButtonElement>('restart').disabled = busy;
+  }
 });
+function click(i: number) { void input.tap(i); }
+const dialog = el<HTMLDialogElement>('restart-dialog');
+el('restart').addEventListener('click', () => { if (input.busy) return; dialog.returnValue = ''; dialog.showModal(); });
+dialog.addEventListener('close', () => {
+  if (dialog.returnValue === 'restart') { saved = { version: 1, game: initialGame(), from: null, path: [] }; warning = ''; persist(); render(); }
+});
+persist();
 render();

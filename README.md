@@ -68,6 +68,7 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 
 - `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, capturas opcionales, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` define el punto de entrada de una futura IA.
 - `src/interaction.ts`: selección por dos pulsaciones y capturas encadenadas opcionales, sin dependencia del DOM.
+- `src/animation.ts`: presentación animada de cada desplazamiento y bloqueo temporal de entrada; usa la interacción existente sin cambiar el motor.
 - `src/main.ts`: tablero, indicador del turno y botón grande «Nueva partida» con confirmación. Sin ajustes, selector de reglas, menús ocultos ni PIN. Solo se muestran avisos adicionales si no se puede guardar o recuperar la partida.
 - `src/storage.ts`: guardado local versionado y validado. Conserva también la selección y el progreso de una captura múltiple; mantiene la compatibilidad con el formato anterior. Los datos inválidos se descartan con aviso y el almacenamiento bloqueado no impide jugar.
 - `src/*.test.ts`: pruebas del motor y de la persistencia.
@@ -76,6 +77,16 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 ### Reglas de esta versión
 
 Se juega en casillas claras, con la casilla inferior derecha jugable. Blancas empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. La captura es **opcional**: se puede mover cualquier ficha propia a un destino legal aunque haya capturas. No se aplican las leyes de cantidad ni calidad. Después de cada salto de una captura múltiple se puede continuar tocando otro destino marcado o terminar el turno **tocando de nuevo la ficha que acaba de saltar**. El indicador del turno explica ambas opciones. Si no quedan saltos posibles, el turno termina automáticamente. Durante una cadena no se puede cambiar de ficha ni añadir movimientos sin captura. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
+
+### Animaciones de movimiento
+
+Los movimientos normales duran aproximadamente **350 ms**. La duración aumenta 70 ms por casilla diagonal adicional, hasta **770 ms**, para facilitar el seguimiento de las damas de largo alcance. En una captura, la ficha realiza una elevación discreta sobre la rival; la rival desaparece al aterrizar. Cada salto de una cadena se anima por separado y después se puede continuar o terminar tocando la ficha, como antes.
+
+Se anima la ficha existente con Web Animations y `transform`, sin copias ni cambios de colores. Durante el desplazamiento se conservan los resaltados, se ignoran las pulsaciones del tablero y se desactiva brevemente «Nueva partida». El indicador del turno se actualiza al finalizar. El movimiento elegido se guarda antes de empezar la animación para no perderlo si se recarga o cierra la página.
+
+La preferencia del sistema **Reducir movimiento** (`prefers-reduced-motion`) hace que los movimientos sean instantáneos. Si cambia durante una animación, se gira la pantalla o se oculta la página, se presenta la posición final sin bloquear el juego. También se usa movimiento instantáneo si Web Animations no está disponible. No se añaden ajustes ni botones.
+
+Las pruebas automatizadas comprueban equivalencia con la interacción sin animación, guardado durante un salto, bloqueo de pulsaciones, capturas secuenciales y parada voluntaria, reducción de movimiento y recuperación tras interrupciones. Queda pendiente verificar visualmente la fluidez en Safari/iPadOS 18 y en el iPad físico de 2019.
 
 ### Instalación y uso sin conexión
 

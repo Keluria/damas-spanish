@@ -31,40 +31,51 @@ describe('posición y movimientos', () => {
     applyMove(g, legalMoves(g)[0]); expect(JSON.stringify(g)).toBe(before);
   });
 });
-describe('capturas españolas', () => {
-  it('obliga a capturar y elimina al adversario al acabar', () => {
+describe('capturas opcionales', () => {
+  it('permite capturar, mover esa ficha sin capturar o mover otra ficha', () => {
     const g = game({ 36: w, 27: b, 54: w, 0: b });
-    expect(legalMoves(g)).toEqual([{ from: 36, path: [18], captures: [27] }]);
-    const next = applyMove(g, legalMoves(g)[0]);
+    const capture = { from: 36, path: [18], captures: [27] };
+    expect(legalMoves(g)).toContainEqual(capture);
+    expect(legalMoves(g)).toContainEqual({ from: 36, path: [29], captures: [] });
+    const other = { from: 54, path: [47], captures: [] };
+    expect(legalMoves(g)).toContainEqual(other);
+    expect(applyMove(g, other).board[27]).toEqual(b);
+    const next = applyMove(g, capture);
     expect(next.board[27]).toBeNull(); expect(next.board[18]).toEqual(w); expect(next.turn).toBe('black');
   });
   it('el peón no captura hacia atrás', () => {
     expect(legalMoves(game({ 36: w, 45: b })).every(m => m.captures.length === 0)).toBe(true);
   });
-  it('obliga a completar la captura múltiple', () => {
+  it('permite terminar después del primer salto o completar la captura múltiple', () => {
     const g = game({ 54: w, 45: b, 27: b });
-    expect(legalMoves(g)).toEqual([{ from: 54, path: [36, 18], captures: [45, 27] }]);
-    expect(() => applyMove(g, { from: 54, path: [36], captures: [45] })).toThrow();
+    expect(legalMoves(g)).toContainEqual({ from: 54, path: [36, 18], captures: [45, 27] });
+    const next = applyMove(g, { from: 54, path: [36], captures: [45] });
+    expect(next.board[36]).toEqual(w); expect(next.board[27]).toEqual(b);
+    expect(next.turn).toBe('black');
   });
   it('la dama elige entre casillas libres tras la víctima', () => {
-    expect(legalMoves(game({ 54: W, 36: b })).map(m => m.path)).toEqual([[27], [18], [9], [0]]);
+    expect(legalMoves(game({ 54: W, 36: b })).filter(m => m.captures.length).map(m => m.path)).toEqual([[27], [18], [9], [0]]);
   });
   it('las víctimas permanecen como obstáculos y no se capturan dos veces', () => {
     const moves = legalMoves(game({ 36: W, 27: b, 45: b }));
-    expect(moves.every(m => m.captures.length === 1)).toBe(true);
+    expect(moves.filter(m => m.captures.length).every(m => m.captures.length === 1)).toBe(true);
   });
   it('no salta dos adversarios contiguos', () => {
     expect(legalMoves(game({ 54: W, 45: b, 36: b })).every(m => m.captures.length === 0)).toBe(true);
   });
-  it('cantidad prima sobre capturar una dama', () => {
+  it('no prioriza capturas más largas', () => {
     const moves = legalMoves(game({ 54: w, 45: b, 27: b, 50: w, 41: B }));
-    expect(moves).toEqual([{ from: 54, path: [36, 18], captures: [45, 27] }]);
+    expect(moves).toContainEqual({ from: 54, path: [36, 18], captures: [45, 27] });
+    expect(moves).toContainEqual({ from: 50, path: [32], captures: [41] });
+    expect(moves).toContainEqual({ from: 54, path: [36], captures: [45] });
   });
-  it('calidad prima cuando la cantidad empata', () => {
-    expect(legalMoves(game({ 54: w, 45: b, 50: w, 41: B }))).toEqual([{ from: 50, path: [32], captures: [41] }]);
+  it('no prioriza capturar damas frente a peones', () => {
+    const moves = legalMoves(game({ 54: w, 45: b, 50: w, 41: B }));
+    expect(moves).toContainEqual({ from: 50, path: [32], captures: [41] });
+    expect(moves).toContainEqual({ from: 54, path: [36], captures: [45] });
   });
-  it('conserva todas las alternativas con igual cantidad y calidad', () => {
-    expect(legalMoves(game({ 54: w, 45: b, 50: w, 41: b }))).toHaveLength(2);
+  it('conserva todas las alternativas de captura', () => {
+    expect(legalMoves(game({ 54: w, 45: b, 50: w, 41: b })).filter(m => m.captures.length)).toHaveLength(2);
   });
 });
 describe('coronación y final', () => {
@@ -110,4 +121,21 @@ it('mantiene las invariantes durante una partida determinista de hasta 160 turno
     expect(g.board.every((p, i) => !p || (Math.floor(i / 8) + i % 8) % 2 === 0)).toBe(true);
     expect(g.positions.at(-1)).toBe(positionKey(g.board, g.turn));
   }
+});
+
+it('permite parar también tras el segundo salto de una cadena de tres', () => {
+  const g = game({ 54: w, 45: b, 27: b, 9: b });
+  const stopped = applyMove(g, { from: 54, path: [36, 18], captures: [45, 27] });
+  expect(stopped.board[18]).toEqual(w); expect(stopped.board[9]).toEqual(b);
+  expect(stopped.turn).toBe('black');
+  const completed = applyMove(g, { from: 54, path: [36, 18, 0], captures: [45, 27, 9] });
+  expect(completed.board[0]).toEqual(W);
+});
+
+it('las negras también pueden ignorar una captura disponible', () => {
+  const g = game({ 18: b, 27: w, 0: b }, 'black');
+  expect(legalMoves(g)).toContainEqual({ from: 18, path: [36], captures: [27] });
+  const next = applyMove(g, { from: 0, path: [9], captures: [] });
+  expect(next.board[27]).toEqual(w); expect(next.turn).toBe('white');
+  expect(() => applyMove(g, { from: 18, path: [9], captures: [] })).toThrow();
 });

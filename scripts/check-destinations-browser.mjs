@@ -75,7 +75,8 @@ try {
     assert.equal(initial.game.board.slice(40).filter(p=>p?.color==='black').length,12);
     assert.equal(await page.locator('#status').textContent(),'Tu turno · negras');
     const bytes=await page.screenshot({path:output+'/dark-full-page.png',fullPage:true});const png=PNG.sync.read(bytes);
-    for(const [x,y]of [[2,2],[png.width-3,Math.floor(png.height/2)],[2,png.height-3]]){
+    const panel=await page.locator('.game').boundingBox();
+    for(const [x,y]of [[2,2],[png.width-3,Math.floor(png.height/2)],[2,png.height-3],[Math.round(panel.x+8),Math.round(panel.y+10)]]){
       const at=(y*png.width+x)*4;assert.ok(png.data[at]<90&&png.data[at+1]<90&&png.data[at+2]<90,'El exterior completo debe ser nogal oscuro.');
     }
     await cell(page,41).click();await cell(page,32).click();

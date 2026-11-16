@@ -70,12 +70,12 @@ try{
   assert.ok(new Set(mid.samples.map(p=>p.y.toFixed(1))).size>4,'Deben existir posiciones intermedias reales.');
   assert.ok(mid.samples.every(p=>p.opacity==='1'&&p.visibility==='visible'));
   const png=PNG.sync.read(pngBytes),y=Math.round(mid.rect.y+mid.rect.height/2);
-  let paintedBorder=0;
+  let paintedIvory=0;
   for(let x=Math.ceil(mid.rect.x);x<mid.rect.x+mid.rect.width;x++){
    const offset=(y*png.width+x)*4;
-   if(png.data[offset]<160&&png.data[offset+1]<140&&png.data[offset+2]<110)paintedBorder++;
+   if(png.data[offset]>210&&png.data[offset+1]>190&&png.data[offset+2]>150)paintedIvory++;
   }
-  assert.ok(paintedBorder>=2,'Debe pintarse el borde de la ficha marfil fuera del marco del tablero.');
+  assert.ok(paintedIvory>=5,'Debe pintarse la ficha marfil fuera del marco sobre el fondo nogal.');
   await settled(page);
   const target=await page.locator('[data-captured-slot="white-0"] .piece').boundingBox();
   assert.ok(Math.abs(target.width-mid.target.width)<1);assert.ok(Math.abs(target.x-mid.target.x)<1);

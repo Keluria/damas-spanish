@@ -15,6 +15,7 @@ interface Effects {
   persist(next: SavedGame): void;
   present(next: SavedGame, focus: number): void;
   animate(move: VisualMove): Promise<Cleanup | void>;
+  capture?(move: VisualMove, next: SavedGame, attackerAnimated: boolean): Promise<Cleanup | void>;
   setBusy(busy: boolean): void;
 }
 /** The existing interaction is the only authority for rules and state. */
@@ -37,21 +38,28 @@ export function animatedInput(effects: Effects) {
       busy = true;
       effects.setBusy(true);
       let cleanup: Cleanup | void = undefined;
+      let captureCleanup: Cleanup | void = undefined;
       try {
         // Durable before motion starts: reloading during a jump restores the chosen move.
         effects.persist(next);
+        const move = { from, to: square, captured: option.captures[before.path.length] };
         if (options.animate !== false) {
-          cleanup = await effects.animate({ from, to: square, captured: option.captures[before.path.length] });
+          cleanup = await effects.animate(move);
         }
-      } catch {
+        if (move.captured !== undefined) captureCleanup = await effects.capture?.(move, next, options.animate !== false);
+      } catch (error) {
+        console.error('No se pudo completar la animación de la jugada', error);
         // An unavailable/cancelled animation never rolls back or changes a legal move.
       } finally {
         try {
           // Replace the board before removing the forwards-filled transform: no flash at origin.
           effects.present(next, square);
         } finally {
-          try { cleanup?.(); }
-          finally { busy = false; effects.setBusy(false); }
+          try { captureCleanup?.(); }
+          finally {
+            try { cleanup?.(); }
+            finally { busy = false; effects.setBusy(false); }
+          }
         }
       }
     }

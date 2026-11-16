@@ -95,7 +95,7 @@ Las pruebas automatizadas cubren legalidad y variación, respuesta única, bloqu
 
 ### Animaciones de movimiento
 
-Los movimientos normales duran aproximadamente **350 ms**. La duración aumenta 70 ms por casilla diagonal adicional, hasta **770 ms**, para facilitar el seguimiento de las damas de largo alcance. En una captura, la ficha realiza una elevación discreta sobre la rival; la rival desaparece al aterrizar. Cada salto de una cadena se anima por separado y después se puede continuar o terminar tocando la ficha, como antes.
+Los movimientos normales duran aproximadamente **350 ms**. La duración aumenta 70 ms por casilla diagonal adicional, hasta **770 ms**, para facilitar el seguimiento de las damas de largo alcance. En una captura, la ficha realiza una elevación discreta sobre la rival; después del aterrizaje, la rival viaja hasta la colección situada debajo del tablero. Cada salto de una cadena se anima por separado y después se puede continuar o terminar tocando la ficha, como antes.
 
 Se anima la ficha existente con Web Animations y `transform`, sin copias ni cambios de colores. Durante el desplazamiento se conservan los resaltados, se ignoran las pulsaciones del tablero y se desactiva brevemente «Nueva partida». El indicador del turno se actualiza al finalizar. El movimiento elegido se guarda antes de empezar la animación para no perderlo si se recarga o cierra la página.
 
@@ -172,7 +172,7 @@ Abrir **http://localhost:5175/damas-spanish/** en el navegador de la máquina qu
 
 1. Tocar la única ficha blanca, en **e4** (quinta columna y quinta fila desde arriba).
 2. Tocar **c6** (tercera columna y tercera fila desde arriba), dos casillas en diagonal hacia arriba a la izquierda. Se captura la única negra de d5.
-3. Al terminar el salto, aparece «¡Has ganado!», «¡Muy bien jugado!» y la celebración real de cinco estrellas durante unos dos segundos.
+3. Al terminar el salto y el traslado de la ficha capturada, aparece «¡Has ganado!», «¡Muy bien jugado!» y la celebración real de cinco estrellas durante unos dos segundos.
 4. Pulsar el único botón **Nueva partida**: reinicia directamente con 12 fichas por color y blancas al turno.
 5. **Recargar la página** para volver al escenario de dos fichas y repetir la celebración. Si el sistema tiene Reducir movimiento activado, se muestra el resultado sin animaciones, como en el juego normal.
 
@@ -218,3 +218,22 @@ npm run test:drag:browser
 El workflow **Verify drag input** ejecuta esa comprobación en Chromium y conserva capturas y resultados como artefacto **drag-checks**. Cubre arrastre válido, inválido y fuera del tablero, seguimiento del puntero, captura, dama de largo alcance, cadena opcional, ausencia de jugadas duplicadas, dos pulsaciones, teclado, turno del iPad, cancelaciones y reducción de movimiento. Usa eventos táctiles nativos de Chromium para comprobar el arrastre con el dedo y que la página sigue desplazándose fuera del tablero.
 
 Esta emulación táctil no sustituye la comprobación física de Safari/iPadOS 18 y VoiceOver en el iPad de 2019, que sigue pendiente. La estética de madera, la celebración, las reglas y el formato del guardado se conservan.
+
+
+## Traslado de fichas capturadas
+
+Después de cada salto, la ficha rival original se mueve durante unos **650 ms** desde su casilla hasta su hueco bajo el tablero. Una capa temporal fija permite cruzar el marco sin recortes. Se reduce suavemente al tamaño de la colección al llegar; no se utilizan copias visibles. Las capturas múltiples alternan salto y traslado, uno por uno, también para el iPad. Tras un arrastre válido no se repite el movimiento del atacante.
+
+El tablero y Nueva partida permanecen bloqueados durante ambas fases. El resultado y el cambio visual de turno esperan a que terminen. Reducir movimiento presenta directamente la posición final. Ocultación, pérdida de foco, desplazamiento de página y cambios de tamaño interrumpen el traslado y presentan el estado guardado.
+
+Se guarda el salto y la colección **antes** de animar. Una recarga restaura ambos sin repetir vuelos. El formato mantiene la clave y versión anteriores e incorpora un campo opcional de capturas ordenadas, incluida su condición de dama. Las partidas antiguas siguen siendo válidas: al no contener historial de capturas, su colección comienza vacía y registra las siguientes. Nueva partida vacía la colección. No cambia el motor de reglas.
+
+Para verificar las posiciones intermedias reales y generar capturas y vídeo:
+
+```sh
+npm install --no-save --package-lock=false playwright@1.65.1 pngjs@7.0.0
+npx playwright install chromium ffmpeg
+npm run test:captures:browser
+```
+
+La prueba usa la compilación de producción y partidas aisladas en contextos de navegador, sin tocar el guardado del usuario. Comprueba orden salto/traslado, identidad de la ficha, posiciones intermedias, píxeles visibles fuera del marco, destino y tamaño finales, captura múltiple, arrastre sin animación repetida, victoria aplazada, reinicio, recarga y reducción de movimiento. El workflow **Verify drag input** ejecuta también esta prueba y conserva el artefacto **captured-pieces** con vídeo, imágenes y resultados. Verificación física en Safari/iPadOS 18 y el iPad de 2019 pendiente.

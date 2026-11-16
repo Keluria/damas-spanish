@@ -3,11 +3,11 @@ import { chooseEasyMove } from './ai';
 import { applyMove, initialGame, legalMoves, positionKey, type Board, type Game } from './engine';
 function position(): Game {
   const board: Board = Array(64).fill(null);
-  board[18] = { color: 'black', king: false };
-  board[27] = { color: 'white', king: false };
-  board[54] = { color: 'black', king: false };
-  board[0] = { color: 'white', king: true };
-  return {board, turn:'black', positions:[positionKey(board,'black')]};
+  board[18] = { color: 'white', king: false };
+  board[27] = { color: 'black', king: false };
+  board[54] = { color: 'white', king: false };
+  board[0] = { color: 'black', king: true };
+  return {board, turn:'white', positions:[positionKey(board,'white')]};
 }
 it('elige únicamente movimientos legales, sin mutar la posición', () => {
   const game = position(), before = JSON.stringify(game), legal = legalMoves(game);

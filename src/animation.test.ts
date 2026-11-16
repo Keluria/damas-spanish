@@ -10,12 +10,12 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
-function initial(): SavedGame { return { version: 1, game: initialGame(), from: null, path: [] }; }
+function initial(): SavedGame { return { version: 2, game: initialGame(), from: null, path: [] }; }
 function chain(): SavedGame {
   const board: Board = Array(64).fill(null);
-  board[54] = board[50] = { color: 'white', king: false };
-  board[45] = board[27] = { color: 'black', king: false };
-  return { version: 1, game: { board, turn: 'white', positions: [positionKey(board, 'white')] }, from: null, path: [] };
+  board[54] = board[50] = { color: 'black', king: false };
+  board[45] = board[27] = { color: 'white', king: false };
+  return { version: 2, game: { board, turn: 'black', positions: [positionKey(board, 'black')] }, from: null, path: [] };
 }
 function harness(start = initial()) {
   let state = start;
@@ -44,13 +44,13 @@ describe('estado e interacción animada', () => {
     h.present.mockClear(); h.persist.mockClear(); h.timeline.length = 0;
     const landing = h.input.tap(32);
     expect(h.input.busy).toBe(true); expect(h.state()).toBe(before);
-    expect(h.state().game.turn).toBe('white');
+    expect(h.state().game.turn).toBe('black');
     expect(h.persist).toHaveBeenCalledExactlyOnceWith(expected);
     expect(h.animate).toHaveBeenCalledExactlyOnceWith({ from: 41, to: 32, captured: undefined });
     await h.input.tap(43); await h.input.tap(34);
     expect(h.present).not.toHaveBeenCalled(); expect(h.animate).toHaveBeenCalledTimes(1);
     h.motion.resolve(h.cleanup); await landing;
-    expect(h.state()).toEqual(expected); expect(h.state().game.turn).toBe('black');
+    expect(h.state()).toEqual(expected); expect(h.state().game.turn).toBe('white');
     expect(h.timeline).toEqual(['present', 'cleanup']); expect(h.input.busy).toBe(false);
     expect(h.busy.mock.calls).toEqual([[true], [false]]);
   });
@@ -58,7 +58,7 @@ describe('estado e interacción animada', () => {
     const h = harness(chain()); await h.input.tap(50);
     const expected = tapSquare(h.state(), 41), landing = h.input.tap(41);
     h.motion.resolve(); await landing;
-    expect(h.state()).toEqual(expected); expect(h.state().game.board[45]?.color).toBe('black');
+    expect(h.state()).toEqual(expected); expect(h.state().game.board[45]?.color).toBe('white');
   });
   it('anima cada salto desde la posición actual y permite detener la cadena', async () => {
     const h = harness(chain()); await h.input.tap(54);
@@ -66,11 +66,11 @@ describe('estado e interacción animada', () => {
     expect(h.state().path).toEqual([]); // The old projection, including the victim, stays visible.
     expect(h.animate).toHaveBeenLastCalledWith({ from: 54, to: 36, captured: 45 });
     h.motion.resolve(); await first;
-    expect(h.state().path).toEqual([36]); expect(h.state().game.turn).toBe('white');
+    expect(h.state().path).toEqual([36]); expect(h.state().game.turn).toBe('black');
     const partial = h.state();
     await h.input.tap(36);
     expect(h.animate).toHaveBeenCalledTimes(1); // Voluntary stop has no displacement.
-    expect(h.state()).toEqual(tapSquare(partial, 36)); expect(h.state().game.turn).toBe('black');
+    expect(h.state()).toEqual(tapSquare(partial, 36)); expect(h.state().game.turn).toBe('white');
   });
   it('completa los saltos secuenciales sin alterar las capturas ni la posición final', async () => {
     const h = harness(chain()); const plain = tapSquare(tapSquare(tapSquare(chain(), 54), 36), 18);
@@ -100,8 +100,8 @@ describe('estado e interacción animada', () => {
   });
   it('una dama conserva su desplazamiento largo legal con animación', async () => {
     const board: Board = Array(64).fill(null);
-    board[63] = { color: 'white', king: true }; board[7] = { color: 'black', king: false };
-    const h = harness({ version: 1, game: { board, turn: 'white', positions: [positionKey(board, 'white')] }, from: 63, path: [] });
+    board[63] = { color: 'black', king: true }; board[7] = { color: 'white', king: false };
+    const h = harness({ version: 2, game: { board, turn: 'black', positions: [positionKey(board, 'black')] }, from: 63, path: [] });
     const expected = tapSquare(h.state(), 0), landing = h.input.tap(0);
     expect(h.animate).toHaveBeenCalledWith({ from: 63, to: 0, captured: undefined });
     h.motion.resolve(); await landing;
@@ -109,12 +109,12 @@ describe('estado e interacción animada', () => {
   });
   it('presenta la coronación y el nuevo turno solo después de aterrizar', async () => {
     const board: Board = Array(64).fill(null);
-    board[9] = { color: 'white', king: false }; board[63] = { color: 'black', king: false };
-    const h = harness({ version: 1, game: { board, turn: 'white', positions: [positionKey(board, 'white')] }, from: 9, path: [] });
+    board[9] = { color: 'black', king: false }; board[63] = { color: 'white', king: false };
+    const h = harness({ version: 2, game: { board, turn: 'black', positions: [positionKey(board, 'black')] }, from: 9, path: [] });
     const landing = h.input.tap(0);
-    expect(h.state().game.board[9]?.king).toBe(false); expect(h.state().game.turn).toBe('white');
+    expect(h.state().game.board[9]?.king).toBe(false); expect(h.state().game.turn).toBe('black');
     h.motion.resolve(); await landing;
-    expect(h.state().game.board[0]?.king).toBe(true); expect(h.state().game.turn).toBe('black');
+    expect(h.state().game.board[0]?.king).toBe(true); expect(h.state().game.turn).toBe('white');
   });
   it('un toque inválido no anima, no guarda ni altera la partida', async () => {
     const h = harness(); const before = h.state(); await h.input.tap(0);

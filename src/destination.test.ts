@@ -5,11 +5,11 @@ import { animatedInput, type Cleanup } from './animation';
 import { commitDrag, dragPlan } from './drag-model';
 import { loadGame, saveGame, type SavedGame } from './storage';
 
-function fixture(black = [45, 27, 9], king = false): SavedGame {
+function fixture(white = [45, 27, 9], king = false): SavedGame {
   const board: Board = Array(64).fill(null);
-  board[54] = { color: 'white', king };
-  for (const square of black) board[square] = { color: 'black', king: false };
-  return { version: 1, game: { board, turn: 'white', positions: [positionKey(board, 'white')] }, from: 54, path: [] };
+  board[54] = { color: 'black', king };
+  for (const square of white) board[square] = { color: 'white', king: false };
+  return { version: 2, game: { board, turn: 'black', positions: [positionKey(board, 'black')] }, from: 54, path: [] };
 }
 function harness(initial: SavedGame) {
   let saved = initial;
@@ -26,23 +26,23 @@ it('resalta todos los prefijos de captura doble y triple, sin exigir continuar',
   expect([...destinationPaths(fixture()).keys()]).toEqual(expect.arrayContaining([36, 18, 0]));
   const first = tapSquare(fixture(), 36);
   expect(first.path).toEqual([36]);
-  expect(tapSquare(first, 36).game.turn).toBe('black');
+  expect(tapSquare(first, 36).game.turn).toBe('white');
 });
 it('elige numéricamente la ruta equivalente y no depende de una preferencia de cantidad', () => {
   const saved = fixture([18, 20, 22, 32, 45], true);
   expect(legalMoves(saved.game).filter(m => m.path.at(-1) === 9)).toHaveLength(2);
-  expect(destinationPaths(saved).get(9)).toEqual([27, 9]);
+  expect(destinationPaths(saved).get(9)).toEqual([[27, 9]]);
 });
-it('no ofrece atajos con capturas diferentes al mismo destino; se desambigua por etapas', () => {
+it('ofrece todas las rutas con capturas diferentes al mismo destino para elegir', () => {
   const saved = fixture([11, 13, 29, 45, 47], true);
-  expect(destinationPaths(saved).has(22)).toBe(false);
-  expect(dragPlan(saved, 54)!.destinations).not.toContain(22);
+  expect(destinationPaths(saved).get(22)).toEqual([[18, 4, 22], [36, 22]]);
+  expect(dragPlan(saved, 54)!.destinations).toContain(22);
   const step = tapSquare(saved, 36);
-  expect(destinationPaths(step).get(22)).toEqual([22]);
+  expect(destinationPaths(step).get(22)).toEqual([[22]]);
 });
-it('un destino inmediato tiene prioridad sobre un atajo, conservando las etapas', () => {
+it('un destino inmediato sigue disponible como una etapa', () => {
   const saved = fixture();
-  expect(destinationPaths(saved).get(36)).toEqual([36]);
+  expect(destinationPaths(saved).get(36)).toEqual([[36]]);
 });
 it.each([2, 3])('ejecuta %i saltos y traslados en orden con un único bloqueo', async count => {
   const initial = fixture(count === 2 ? [45, 27] : undefined);
@@ -58,7 +58,7 @@ it.each([2, 3])('ejecuta %i saltos y traslados en orden con un único bloqueo', 
 });
 it('un atajo puede terminar en un prefijo aunque exista otro salto, sin captura obligatoria', async () => {
   const h = harness(fixture()); await h.input.tap(18);
-  expect(h.current().game.turn).toBe('black'); expect(h.current().game.board[9]).not.toBeNull();
+  expect(h.current().game.turn).toBe('white'); expect(h.current().game.board[9]).not.toBeNull();
   expect(h.current().captured).toHaveLength(2);
 });
 it('permite elegir destino distante después de un primer salto manual', async () => {
@@ -78,7 +78,7 @@ it('guarda el resultado completo antes del primer salto y no lo reemplaza por cu
   const pending = input.tap(0);
   expect(input.busy).toBe(true);
   const restored = loadGame().saved;
-  expect(restored.game.board[0]).toEqual({ color: 'white', king: true });
+  expect(restored.game.board[0]).toEqual({ color: 'black', king: true });
   expect(restored.captured).toHaveLength(3); expect(restored.path).toEqual([]);
   await input.tap(36); expect(animations).toBe(1);
   release(); await pending;
@@ -93,12 +93,42 @@ it('arrastrar al destino final solicita los saltos reales; un salto único no se
 });
 it('un destino ambiguo no cambia selección, guardado ni turno', async () => {
   const saved = fixture([11, 13, 29, 45, 47], true), h = harness(saved);
-  await h.input.tap(22); expect(h.current()).toBe(saved); expect(h.events).toEqual([]);
-  const tap = vi.fn(async () => {}); expect(await commitDrag(saved, 54, 22, tap)).toBe(false); expect(tap).not.toHaveBeenCalled();
+  await h.input.tap(22); expect(h.current()).toBe(saved); expect(h.events).toEqual(['busy:true', 'busy:false']);
+  const tap = vi.fn(async () => {}); expect(await commitDrag(saved, 54, 22, tap)).toBe(true); expect(tap).toHaveBeenCalledWith(22, { animate: true });
 });
 
 it('no acepta atajos después de tablas aunque queden movimientos en el tablero', async () => {
-  const saved = fixture(); saved.game.positions = Array(3).fill(positionKey(saved.game.board, 'white'));
+  const saved = fixture(); saved.game.positions = Array(3).fill(positionKey(saved.game.board, 'black'));
   expect(destinationPaths(saved).size).toBe(0);
   const h = harness(saved); await h.input.tap(0); expect(h.current()).toBe(saved); expect(h.events).toEqual([]);
+});
+
+it.each([{ path: [36] }, { path: [18, 4, 22, 36] }])('permite elegir la ruta $path cuando un destino es inmediato y también final', async ({ path }) => {
+  let saved = fixture([11, 13, 29, 31, 45], true);
+  const paths = destinationPaths(saved).get(36)!;
+  expect(paths).toContainEqual([36]); expect(paths).toContainEqual([18, 4, 22, 36]);
+  const choosePath = vi.fn(async () => path);
+  const input = animatedInput({ current: () => saved, persist: vi.fn(), present: next => { saved = next; },
+    animate: async () => {}, capture: async () => {}, setBusy: vi.fn(), choosePath });
+  await input.tap(36);
+  expect(choosePath).toHaveBeenCalledTimes(1);
+  expect(saved.captured).toHaveLength(path.length);
+  if (path.length === 1) { expect(saved.path).toEqual([36]); expect(saved.game.turn).toBe('black'); }
+  else { expect(saved.path).toEqual([]); expect(saved.game.turn).toBe('white'); }
+});
+it('cancelar la elección conserva selección, guardado y partida', async () => {
+  const saved = fixture([11, 13, 29, 45, 47], true), persist = vi.fn();
+  const input = animatedInput({ current: () => saved, persist, present: vi.fn(), animate: vi.fn(), setBusy: vi.fn(), choosePath: async () => undefined });
+  await input.tap(22); expect(persist).not.toHaveBeenCalled(); expect(input.busy).toBe(false);
+});
+
+it('una cadena que regresa al origen no impide deseleccionar ni oculta el destino final', async () => {
+  const saved = fixture([11,13,20,25,27,29],true);
+  saved.game.board[36] = saved.game.board[54]; saved.game.board[54] = null;
+  saved.game.positions = [positionKey(saved.game.board,'black')]; saved.from=36;
+  expect(destinationPaths(saved).get(36)).toEqual([[],[18,4,22,36]]);
+  let current = saved;
+  const input = animatedInput({ current:()=>current, persist:vi.fn(), present:next=>{current=next;},
+    animate:async()=>{}, setBusy:vi.fn(), choosePath:async()=>[] });
+  await input.tap(36); expect(current.from).toBeNull(); expect(current.game).toBe(saved.game);
 });

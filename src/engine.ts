@@ -1,5 +1,7 @@
 /** Motor puro: índices fila * 8 + columna; casillas claras jugables. */
 export type Color = 'white' | 'black';
+export const HUMAN_COLOR: Color = 'black';
+export const COMPUTER_COLOR: Color = 'white';
 export interface Piece { color: Color; king: boolean }
 export type Board = (Piece | null)[];
 export interface Move { from: number; path: number[]; captures: number[] }
@@ -16,11 +18,11 @@ export function positionKey(board: Board, turn: Color): string {
 export function initialGame(): Game {
   const board: Board = Array(64).fill(null);
   for (let i = 0; i < 64; i++) if ((row(i) + col(i)) % 2 === 0 && (row(i) < 3 || row(i) > 4))
-    board[i] = { color: row(i) < 3 ? 'black' : 'white', king: false };
-  return { board, turn: 'white', positions: [positionKey(board, 'white')] };
+    board[i] = { color: row(i) < 3 ? COMPUTER_COLOR : HUMAN_COLOR, king: false };
+  return { board, turn: HUMAN_COLOR, positions: [positionKey(board, HUMAN_COLOR)] };
 }
 function pieceDirections(piece: Piece) {
-  return piece.king ? directions : directions.filter(([dr]) => dr === (piece.color === 'white' ? -1 : 1));
+  return piece.king ? directions : directions.filter(([dr]) => dr === (piece.color === HUMAN_COLOR ? -1 : 1));
 }
 function captureSequences(board: Board, from: number, piece: Piece): Move[] {
   const result: Move[] = [];
@@ -81,7 +83,7 @@ export function applyMove(game: Game, move: Move): Game {
   move.captures.forEach(i => { board[i] = null; });
   const destination = move.path.at(-1)!;
   // Promotion takes place only after completing the entire move.
-  piece.king ||= row(destination) === (piece.color === 'white' ? 0 : 7);
+  piece.king ||= row(destination) === (piece.color === HUMAN_COLOR ? 0 : 7);
   board[destination] = piece;
   const turn = opposite(game.turn);
   const irreversible = move.captures.length > 0 || !game.board[move.from]!.king;

@@ -1,4 +1,4 @@
-import { legalMoves, outcome } from './engine';
+import { HUMAN_COLOR, legalMoves, outcome } from './engine';
 import { destinationPaths } from './interaction';
 import type { TapOptions } from './animation';
 import type { SavedGame } from './storage';
@@ -9,7 +9,7 @@ export function crossedDragThreshold(dx: number, dy: number): boolean {
 }
 /** Preview selection without mutating or persisting the actual game. */
 export function dragPlan(saved: SavedGame, source: number) {
-  if (saved.game.turn !== 'white' || outcome(saved.game)) return null;
+  if (saved.game.turn !== HUMAN_COLOR || outcome(saved.game)) return null;
   if (saved.path.length) {
     if (saved.path.at(-1) !== source) return null;
   } else if (!legalMoves(saved.game).some(move => move.from === source)) return null;
@@ -24,6 +24,6 @@ export async function commitDrag(
   const plan = dragPlan(saved, source);
   if (!plan?.destinations.includes(destination)) return false;
   if (saved.from !== plan.selection.from) await tap(plan.selection.from!);
-  await tap(destination, { animate: destinationPaths(plan.selection).get(destination)!.length > 1 });
+  await tap(destination, { animate: destinationPaths(plan.selection).get(destination)!.some(path => path.length > 1) });
   return true;
 }

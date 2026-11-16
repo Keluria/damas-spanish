@@ -1,6 +1,6 @@
 import './style.css';
 import { animatedInput, animatePiece } from './animation';
-import { legalMoves, outcome, type Board } from './engine';
+import { HUMAN_COLOR, legalMoves, outcome, type Board } from './engine';
 import { candidates, destinationPaths } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { ipadOpponent } from './opponent';
@@ -8,6 +8,7 @@ import { resultScreen } from './result';
 import { renderCaptured } from './captured';
 import { captureAnimations } from './capture-animation';
 import { installDragging } from './drag';
+import { routePicker } from './routes';
 import { commitDrag } from './drag-model';
 import type { SavedGame } from './storage';
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -47,7 +48,7 @@ const result = resultScreen({
 function render(focus?: number, restoring = false, display: SavedGame = saved) {
   const end = outcome(display.game);
   const moves = end ? [] : legalMoves(display.game);
-  const humanTurn = display.game.turn === 'white';
+  const humanTurn = display.game.turn === HUMAN_COLOR;
   boardEl.setAttribute('aria-disabled', String(!humanTurn || !!end));
   const next = new Set(humanTurn ? destinationPaths(display).keys() : []);
   const current = display.path.at(-1) ?? display.from;
@@ -58,8 +59,8 @@ function render(focus?: number, restoring = false, display: SavedGame = saved) {
     board[current!] = piece;
   }
   if (!end) {
-    el('status').textContent = humanTurn ? 'Tu turno · blancas' : 'Turno del iPad · negras';
-    el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : display.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : display.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
+    el('status').textContent = humanTurn ? 'Tu turno · negras' : 'Turno del iPad · blancas';
+    el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas blancas. Espera un momento.' : display.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : display.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
   }
   el('turn-piece').className = `piece ${display.game.turn}`;
   renderCaptured(capturedEl, display.captured ?? []);
@@ -87,7 +88,7 @@ function render(focus?: number, restoring = false, display: SavedGame = saved) {
         token.textContent = piece.king ? '♛' : '';
         button.append(token);
       }
-      if (next.has(i)) { const dot = document.createElement('span'); dot.className = 'marker'; dot.setAttribute('aria-hidden', 'true'); cell.append(dot); }
+      if (next.has(i) && !board[i]) { const dot = document.createElement('span'); dot.className = 'marker'; dot.setAttribute('aria-hidden', 'true'); cell.append(dot); }
     } else cell.setAttribute('aria-hidden', 'true');
     boardEl.append(cell);
   }
@@ -96,8 +97,9 @@ function render(focus?: number, restoring = false, display: SavedGame = saved) {
 }
 const input = animatedInput({
   current: () => saved,
+  choosePath: routePicker(el<HTMLDialogElement>('route-dialog')),
   persist,
-  present: (next, focus) => { const humanTurn = saved.game.turn === 'white'; saved = next; render(humanTurn ? focus : undefined); },
+  present: (next, focus) => { const humanTurn = saved.game.turn === HUMAN_COLOR; saved = next; render(humanTurn ? focus : undefined); },
   animate: move => animatePiece(boardEl, move),
   capture: (move, next, animated) => captureMotion.transfer(move, next, animated),
   setBusy: busy => {
@@ -116,7 +118,7 @@ const opponent = ipadOpponent({
 });
 const drag = installDragging(boardEl, {
   current: () => saved,
-  canInput: () => !moving && !dragging && !result.finished && saved.game.turn === 'white' && !dialog.open,
+  canInput: () => !moving && !dragging && !result.finished && saved.game.turn === HUMAN_COLOR && !dialog.open,
   preview: next => render(undefined, false, next),
   restore: focus => render(focus),
   commit: (source, destination) => commitDrag(saved, source, destination, opponent.humanTap),

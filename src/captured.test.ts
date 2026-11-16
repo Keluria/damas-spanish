@@ -8,9 +8,9 @@ import { loadGame, saveGame, validateSaved, type SavedGame } from './storage';
 
 function chain(): SavedGame {
   const board: Board = Array(64).fill(null);
-  board[54] = { color: 'white', king: false };
-  board[45] = { color: 'black', king: true }; board[27] = { color: 'black', king: false };
-  return { version: 1, game: { board, turn: 'white', positions: [positionKey(board, 'white')] }, from: null, path: [] };
+  board[54] = { color: 'black', king: false };
+  board[45] = { color: 'white', king: true }; board[27] = { color: 'white', king: false };
+  return { version: 2, game: { board, turn: 'black', positions: [positionKey(board, 'black')] }, from: null, path: [] };
 }
 function memory() {
   let raw: string | null = null;
@@ -21,10 +21,10 @@ afterEach(() => vi.unstubAllGlobals());
 it('registra cada víctima en orden y conserva si era dama', () => {
   const original = chain();
   const first = tapSquare(tapSquare(original, 54), 36);
-  expect(first.captured).toEqual([{ color: 'black', king: true }]);
+  expect(first.captured).toEqual([{ color: 'white', king: true }]);
   expect(first.captured![0]).not.toBe(original.game.board[45]);
   const last = tapSquare(first, 18);
-  expect(last.captured).toEqual([{ color: 'black', king: true }, { color: 'black', king: false }]);
+  expect(last.captured).toEqual([{ color: 'white', king: true }, { color: 'white', king: false }]);
   expect(last.game.board[45]).toBeNull(); expect(last.game.board[27]).toBeNull();
   expect(original.captured).toBeUndefined();
 });
@@ -34,7 +34,7 @@ it('terminar voluntariamente la cadena no duplica la primera víctima', () => {
   expect(stopped.captured).toEqual(first.captured); expect(stopped.captured).toHaveLength(1);
 });
 it('un movimiento normal no añade fichas a la colección', () => {
-  const game: SavedGame = { version: 1, game: initialGame(), from: null, path: [] };
+  const game: SavedGame = { version: 2, game: initialGame(), from: null, path: [] };
   expect(tapSquare(tapSquare(game, 41), 32).captured).toBeUndefined();
 });
 it('acepta los guardados antiguos sin reconstruir capturas desconocidas', () => {
@@ -44,15 +44,15 @@ it('acepta los guardados antiguos sin reconstruir capturas desconocidas', () => 
 it('rechaza colecciones corruptas o con más fichas de las posibles', () => {
   const old = chain();
   expect(validateSaved({ ...old, captured: null })).toBe(false);
-  expect(validateSaved({ ...old, captured: [{ color: 'black', king: 'yes' }] })).toBe(false);
-  expect(validateSaved({ ...old, captured: Array(13).fill({ color: 'black', king: false }) })).toBe(false);
+  expect(validateSaved({ ...old, captured: [{ color: 'white', king: 'yes' }] })).toBe(false);
+  expect(validateSaved({ ...old, captured: Array(13).fill({ color: 'white', king: false }) })).toBe(false);
 });
 it('recupera la colección y la casilla intermedia sin volver a capturar la misma ficha', () => {
   memory(); const first = tapSquare(tapSquare(chain(), 54), 36); saveGame(first);
   const restored = loadGame(); expect(restored.warning).toBe(''); expect(restored.saved.captured).toHaveLength(1);
   const next = tapSquare(restored.saved, 18); expect(next.captured).toHaveLength(2);
 });
-it('Nueva partida vacía la colección y empieza con blancas', () => {
+it('Nueva partida vacía la colección y empieza con negras', () => {
   let saved = tapSquare(tapSquare(chain(), 54), 36);
   const opponent = ipadOpponent({ current: () => saved, busy: () => false, tap: async () => {}, replace: next => { saved = next; } });
   opponent.newGame(); expect(saved.captured).toBeUndefined(); expect(saved.game).toEqual(initialGame());

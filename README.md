@@ -8,7 +8,7 @@ Crear una aplicación sencilla, accesible y fácil de utilizar, que permita juga
 ## Características
 - Tablero tradicional de 8 × 8 casillas.
 - Variante simplificada fija de las damas españolas: capturas opcionales y sin prioridades.
-- Partidas contra el iPad: el humano lleva blancas y empieza; el iPad lleva negras.
+- Partidas contra el iPad: el humano lleva negras y empieza; el iPad lleva blancas.
 - Fichas grandes y controles táctiles.
 - Movimientos mediante dos pulsaciones o arrastrar y soltar.
 - Indicaciones visuales de los movimientos permitidos.
@@ -48,7 +48,7 @@ Desarrollado con ayuda de OpenAI Codex.
 
 ## Primera versión funcional (0.1)
 
-Implementa juego **contra el iPad**, con dificultad fácil fija. El humano lleva blancas y comienza; el iPad responde automáticamente con negras. No hay selectores de modo ni de dificultad.
+Implementa juego **contra el iPad**, con dificultad fácil fija. El humano lleva negras y comienza; el iPad responde automáticamente con blancas. No hay selectores de modo ni de dificultad.
 
 ### Desarrollo y comprobación
 
@@ -68,7 +68,7 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 
 - `src/engine.ts`: motor puro, independiente del DOM, con movimientos completos, capturas opcionales, coronación, fin por bloqueo o falta de fichas y tablas por triple repetición de posición con el mismo turno. `MoveProvider` conserva un contrato para otras estrategias de rival.
 - `src/ai.ts`: elección ponderada y ligera entre los movimientos legales, sin búsqueda profunda ni red.
-- `src/opponent.ts`: coordinación de los turnos negros, pausa breve, cancelación al reiniciar y recuperación de capturas interrumpidas.
+- `src/opponent.ts`: coordinación de los turnos blancos, pausa breve, cancelación al reiniciar y recuperación de capturas interrumpidas.
 - `src/interaction.ts`: selección por dos pulsaciones y capturas encadenadas opcionales, sin dependencia del DOM.
 - `src/animation.ts`: presentación animada de cada desplazamiento y bloqueo temporal de entrada; usa la interacción existente sin cambiar el motor.
 - `src/result.ts`: presentación única del resultado calculado por el motor, aplazada hasta finalizar la última animación.
@@ -79,17 +79,17 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 
 ### Reglas de esta versión
 
-Se juega en casillas claras, con la casilla inferior derecha jugable. Blancas empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. La captura es **opcional**: se puede mover cualquier ficha propia a un destino legal aunque haya capturas. No se aplican las leyes de cantidad ni calidad. Después de cada salto de una captura múltiple se puede continuar tocando otro destino marcado o terminar el turno **tocando de nuevo la ficha que acaba de saltar**. El indicador del turno explica ambas opciones. Si no quedan saltos posibles, el turno termina automáticamente. Durante una cadena no se puede cambiar de ficha ni añadir movimientos sin captura. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
+Se juega en casillas claras, con la casilla inferior derecha jugable. Negras empiezan. Los peones avanzan y capturan **solo hacia delante**; las damas recorren las cuatro diagonales y pueden aterrizar en cualquiera de las casillas libres tras la víctima. La captura es **opcional**: se puede mover cualquier ficha propia a un destino legal aunque haya capturas. No se aplican las leyes de cantidad ni calidad. Después de cada salto de una captura múltiple se puede continuar tocando otro destino marcado o terminar el turno **tocando de nuevo la ficha que acaba de saltar**. El indicador del turno explica ambas opciones. Si no quedan saltos posibles, el turno termina automáticamente. Durante una cadena no se puede cambiar de ficha ni añadir movimientos sin captura. Las piezas capturadas siguen bloqueando las diagonales hasta terminar el turno y no pueden capturarse otra vez. La coronación ocurre al finalizar el movimiento, sin continuar como dama recién coronada en ese turno.
 
 ### Rival del iPad
 
-El humano utiliza siempre las blancas y juega primero. Tras completar el turno humano, el iPad espera unos **650 ms** y mueve las negras. El indicador identifica de quién es el turno. La pantalla conserva únicamente tablero, indicador y «Nueva partida»; el diseño de madera no cambia.
+El humano utiliza siempre las negras y juega primero. Tras completar el turno humano, el iPad espera unos **650 ms** y mueve las blancas. El indicador identifica de quién es el turno. La pantalla conserva únicamente tablero, indicador y «Nueva partida»; el diseño de madera no cambia.
 
 La dificultad es fácil: se da algo más de peso a capturas, coronaciones, avance y casillas centrales, y se elige con variación entre **todas** las opciones legales. No es una elección uniforme ni una búsqueda competitiva. Las capturas siguen siendo opcionales para ambos: el iPad también puede elegir no capturar o terminar una cadena antes del último salto.
 
-La máquina utiliza exactamente la misma interacción y las mismas animaciones que el humano, salto a salto. Durante el turno negro se ignoran las pulsaciones sobre el tablero. «Nueva partida» está disponible durante la pausa previa; al abrir su confirmación se suspende la respuesta pendiente. Solo queda desactivada durante un desplazamiento, como antes. Cancelar la confirmación reanuda la respuesta; confirmar borra la partida y deja siempre el primer turno al humano.
+La máquina utiliza exactamente la misma interacción y las mismas animaciones que el humano, salto a salto. Durante el turno blanco se ignoran las pulsaciones sobre el tablero. «Nueva partida» está disponible durante la pausa previa; al abrir su confirmación se suspende la respuesta pendiente. Solo queda desactivada durante un desplazamiento, como antes. Cancelar la confirmación reanuda la respuesta; confirmar borra la partida y deja siempre el primer turno al humano.
 
-Se mantiene el formato de guardado anterior. Al abrir una partida con turno negro, el rival responde una sola vez; si se había interrumpido una cadena negra, retoma la casilla y los saltos pendientes sin repetir las capturas ya guardadas. El resto de la secuencia puede variar al recuperarla. Una recarga durante una animación recupera el salto que ya se guardó, no el origen anterior. Si la aplicación se oculta, se suspende la coordinación y se reanuda al volver.
+Se mantiene la compatibilidad del guardado mediante migración a v2. Al abrir una partida con turno blanco, el rival responde una sola vez; si se había interrumpido una cadena blanca, retoma la casilla y los saltos pendientes sin repetir las capturas ya guardadas. El resto de la secuencia puede variar al recuperarla. Una recarga durante una animación recupera el salto que ya se guardó, no el origen anterior. Si la aplicación se oculta, se suspende la coordinación y se reanuda al volver.
 
 Las pruebas automatizadas cubren legalidad y variación, respuesta única, bloqueo de pulsaciones, reinicio, confirmación suspendida, restauración, capturas opcionales cortas y completas y animación secuencial. También se han comprobado ocho recorridos con Playwright en Chromium real sobre la compilación de producción: respuesta animada única, reinicio durante la pausa, recargas antes y durante el movimiento, captura doble, continuación guardada, coronación y reducción de movimiento. La comprobación en Safari/iPadOS 18 y el iPad físico de 2019 sigue pendiente.
 
@@ -107,13 +107,13 @@ Las pruebas automatizadas comprueban equivalencia con la interacción sin animac
 
 Al terminar, el resultado sustituye al tablero dentro del mismo panel de madera. Se consulta `outcome()` del motor: victoria por falta de fichas o movimientos, y tablas según la triple repetición ya implementada. No cambian las reglas ni la dificultad del rival.
 
-- Si ganan las blancas: «¡Has ganado!» y «¡Muy bien jugado!», con aparición gradual y cinco estrellas doradas discretas durante unos dos segundos, sin repeticiones, sonidos ni destellos.
-- Si ganan las negras: «Partida terminada» y un mensaje amable, sin celebración.
+- Si ganan las negras: «¡Has ganado!» y «¡Muy bien jugado!», con aparición gradual y cinco estrellas doradas discretas durante unos dos segundos, sin repeticiones, sonidos ni destellos.
+- Si ganan las blancas: «Partida terminada» y un mensaje amable, sin celebración.
 - Si hay empate: «¡Tablas! Buena partida», sin celebración.
 
 Los tres resultados conservan **un único botón grande «Nueva partida»**, que reinicia directamente y devuelve el primer turno al humano. Durante una partida en curso el botón sigue pidiendo confirmación.
 
-La presentación espera a que termine la última animación de ficha y su limpieza. El foco pasa al título del resultado, asociado a su mensaje para lectores de pantalla; los elementos decorativos no se anuncian. Con `prefers-reduced-motion` el mensaje y las estrellas son estáticos. Al reabrir una partida ya terminada se muestra el resultado sin repetir la celebración y sin cambiar el formato de guardado.
+La presentación espera a que termine la última animación de ficha y su limpieza. El foco pasa al título del resultado, asociado a su mensaje para lectores de pantalla; los elementos decorativos no se anuncian. Con `prefers-reduced-motion` el mensaje y las estrellas son estáticos. Al reabrir una partida ya terminada se muestra el resultado sin repetir la celebración y con guardado compatible mediante migración a la versión 2.
 
 Las pruebas cubren victoria, derrota, tablas, presentación tras el último salto, reinicio, restauración y ausencia de celebraciones duplicadas. También se ha comprobado en Chromium real con Playwright el resultado de una captura ganadora, victoria del rival, triple repetición, botón único, reinicio directo, confirmación durante la partida y reducción de movimiento. Pendiente verificación en Safari/iPadOS 18 y VoiceOver del iPad físico.
 
@@ -125,7 +125,7 @@ Las nuevas versiones del service worker esperan a que se cierren las ventanas de
 
 ### Limitaciones y validación pendiente
 
-- Hay una única dificultad fácil y no hay rotación del tablero: el humano lleva blancas abajo. La IA no busca varias jugadas por adelantado, no adapta su dificultad y no garantiza siempre la mejor decisión.
+- Hay una única dificultad fácil y no hay rotación del tablero: el humano lleva negras abajo. La IA no busca varias jugadas por adelantado, no adapta su dificultad y no garantiza siempre la mejor decisión.
 - La triple repetición se resuelve automáticamente. **No se implementan aún los otros supuestos reglamentarios de tablas**, incluidos los límites de movimientos sin capturas/avance de peón y los finales de material específicos. Por tanto, esta versión no es todavía un motor reglamentario completo para competición.
 - No hay ajustes para el cuidador, selectores de reglas ni menús. Se conservan fichas grandes, contraste alto, etiquetas accesibles y foco de teclado. No hay sonidos ni reloj. Las marcas indican selección y destinos sin depender solo del color.
 - El tablero se adapta al ancho; está optimizado para iPad. En teléfonos pequeños las casillas pueden medir menos de 44 px.
@@ -170,10 +170,10 @@ npm run dev:victory
 
 Abrir **http://localhost:5175/damas-spanish/** en el navegador de la máquina que ejecuta el servidor. El título de la pestaña será «Prueba de victoria · Desarrollo». Para abrirla desde un iPad en la misma red, usar la dirección de red que muestra Vite con el puerto 5175. No es una dirección pública ni un despliegue en GitHub Pages.
 
-1. Tocar la única ficha blanca, en **e4** (quinta columna y quinta fila desde arriba).
-2. Tocar **c6** (tercera columna y tercera fila desde arriba), dos casillas en diagonal hacia arriba a la izquierda. Se captura la única negra de d5.
+1. Tocar la única ficha negra, en **e4** (quinta columna y quinta fila desde arriba).
+2. Tocar **c6** (tercera columna y tercera fila desde arriba), dos casillas en diagonal hacia arriba a la izquierda. Se captura la única blanca de d5.
 3. Al terminar el salto y el traslado de la ficha capturada, aparece «¡Has ganado!», «¡Muy bien jugado!» y la celebración real de cinco estrellas durante unos dos segundos.
-4. Pulsar el único botón **Nueva partida**: reinicia directamente con 12 fichas por color y blancas al turno.
+4. Pulsar el único botón **Nueva partida**: reinicia directamente con 12 fichas por color y negras al turno.
 5. **Recargar la página** para volver al escenario de dos fichas y repetir la celebración. Si el sistema tiene Reducir movimiento activado, se muestra el resultado sin animaciones, como en el juego normal.
 
 El servidor específico utiliza `vite.victory.config.ts`: conserva el HTML, motor, interacción, animación, IA y pantalla de resultado reales. Solo sustituye el adaptador de guardado por otro en memoria, inicializado con la posición de prueba. No lee ni escribe `localStorage`, no modifica partidas existentes y no añade controles al juego normal. Usa un puerto separado y falla si ya está ocupado.
@@ -217,7 +217,7 @@ npm run test:drag:browser
 
 El workflow **Verify drag input** ejecuta esa comprobación en Chromium y conserva capturas y resultados como artefacto **drag-checks**. Cubre arrastre válido, inválido y fuera del tablero, seguimiento del puntero, captura, dama de largo alcance, cadena opcional, ausencia de jugadas duplicadas, dos pulsaciones, teclado, turno del iPad, cancelaciones y reducción de movimiento. Usa eventos táctiles nativos de Chromium para comprobar el arrastre con el dedo y que la página sigue desplazándose fuera del tablero.
 
-Esta emulación táctil no sustituye la comprobación física de Safari/iPadOS 18 y VoiceOver en el iPad de 2019, que sigue pendiente. La estética de madera, la celebración, las reglas y el formato del guardado se conservan.
+Esta emulación táctil no sustituye la comprobación física de Safari/iPadOS 18 y VoiceOver en el iPad de 2019, que sigue pendiente. La estética de madera, la celebración y las reglas se conservan. El guardado antiguo se migra a la versión 2.
 
 
 ## Traslado de fichas capturadas
@@ -226,7 +226,7 @@ Después de cada salto, la ficha rival original se mueve durante unos **650 ms**
 
 El tablero y Nueva partida permanecen bloqueados durante ambas fases. El resultado y el cambio visual de turno esperan a que terminen. Reducir movimiento presenta directamente la posición final. Ocultación, pérdida de foco, desplazamiento de página y cambios de tamaño interrumpen el traslado y presentan el estado guardado.
 
-Se guarda el salto y la colección **antes** de animar. Una recarga restaura ambos sin repetir vuelos. El formato mantiene la clave y versión anteriores e incorpora un campo opcional de capturas ordenadas, incluida su condición de dama. Las partidas antiguas siguen siendo válidas: al no contener historial de capturas, su colección comienza vacía y registra las siguientes. Nueva partida vacía la colección. No cambia el motor de reglas.
+Se guarda el salto y la colección **antes** de animar. Una recarga restaura ambos sin repetir vuelos. El guardado mantiene la clave anterior e incorpora un campo opcional de capturas ordenadas, incluida su condición de dama. La versión 2 identifica los nuevos colores de jugadores. Las partidas antiguas siguen siendo válidas. Si no contienen historial de capturas, su colección comienza vacía y registra las siguientes; si lo contienen, se conserva al migrar. Nueva partida vacía la colección. No cambia el motor de reglas.
 
 Para verificar las posiciones intermedias reales y generar capturas y vídeo:
 
@@ -241,15 +241,17 @@ La prueba usa la compilación de producción y partidas aisladas en contextos de
 
 ## Destino directo de capturas múltiples
 
-Al seleccionar una ficha se resaltan los destinos del siguiente salto y los destinos más lejanos que tienen una ruta inequívoca. Tocar un destino lejano ejecuta automáticamente los saltos legales hasta esa casilla. Cada salto va seguido del traslado de su víctima a la colección antes de comenzar el siguiente. No cambia el motor ni se aplican prioridades de cantidad/calidad.
+Al seleccionar una ficha se resaltan todos los destinos legales, tanto intermedios como finales, incluidos los que requieren elegir una ruta. Tocar un destino lejano ejecuta automáticamente los saltos legales hasta esa casilla. Cada salto va seguido del traslado de su víctima a la colección antes de comenzar el siguiente. Las rutas provienen del motor y no se aplican prioridades de cantidad/calidad.
 
 También se puede arrastrar directamente al destino lejano. Al soltar, la ficha vuelve suavemente al origen del gesto y después recorre los saltos reales; así no se sustituye la ruta por un desplazamiento recto. El bloqueo de tablero y Nueva partida se mantiene durante el retorno y toda la secuencia. Un movimiento de un solo salto conserva el arrastre habitual, sin repetirlo. Reducir movimiento presenta los estados instantáneamente.
 
 Los destinos inmediatos conservan la selección por etapas: tras un salto se puede continuar o terminar tocando de nuevo la ficha. Un atajo de varios saltos termina en la casilla elegida, aunque existan más capturas después. No hay obligación de continuar ni de capturar.
 
-Si varias rutas al mismo destino capturan exactamente las mismas fichas, se escoge la ruta de casillas en orden numérico lexicográfico (índices fila × 8 + columna). Si capturan fichas diferentes, no se ofrece ese atajo; hay que escoger primero una etapa que desambigüe la ruta. Una casilla que ya es destino inmediato sigue funcionando como una sola etapa, aunque también pueda alcanzarse dando un rodeo.
+Si varias rutas al mismo destino capturan exactamente las mismas fichas, se escoge la ruta de casillas en orden numérico lexicográfico (índices fila × 8 + columna). Si capturan fichas diferentes, se abre un diálogo temporal «Elige cómo llegar a…»: cada botón indica cuántas fichas captura, el recorrido y las casillas capturadas. Se elige con pulsación o teclado (Tab y Enter/Espacio); Cancelar o Escape conservan la selección y la partida. El destino permanece resaltado y se admite tanto por pulsación como por arrastre. No hay botones de rutas permanentes.
 
-El resultado completo elegido se guarda antes del primer salto. Las posiciones intermedias solo se presentan en pantalla: no sobrescriben ese guardado. Cerrar o recargar durante la secuencia recupera la posición final y todas sus capturas sin reproducir la celebración. No se cambia el formato de guardado ni la estrategia de la IA, que sigue eligiendo y ejecutando sus movimientos por etapas.
+Cuando una casilla es destino inmediato y también final de una cadena, el diálogo ofrece ambas opciones; ninguna tiene prioridad automática. Si un recorrido vuelve a la casilla actual, también se conserva la opción de deseleccionar o terminar aquí. Elegir un salto inmediato mantiene la continuación opcional por etapas; elegir una ruta de varios saltos termina en el destino solicitado. La IA pasa explícitamente su etapa elegida y nunca abre el diálogo.
+
+El resultado completo elegido se guarda antes del primer salto. Las posiciones intermedias solo se presentan en pantalla: no sobrescriben ese guardado. Cerrar o recargar durante la secuencia recupera la posición final y todas sus capturas sin reproducir la celebración. La estrategia de la IA se conserva: sigue eligiendo y ejecutando sus movimientos por etapas.
 
 Comprobación con Chromium real:
 
@@ -260,3 +262,14 @@ npm run test:destinations:browser
 ```
 
 Cubre capturas dobles y triples, posiciones intermedias visibles de cada salto y traslado, pulsaciones, arrastre con ratón y táctil nativo, coronación, parada voluntaria, rutas equivalentes y ambiguas, bloqueo continuo, guardado, restauración y reducción de movimiento. El workflow **Verify drag input** conserva el artefacto **multi-capture-destinations**, con vídeo `triple.webm`, capturas y muestras de posiciones. Las pruebas se ejecutan en contextos aislados sobre la compilación de producción; no hay parámetros ni botones de prueba en el juego público. Safari/iPadOS 18 y el iPad físico de 2019 siguen pendientes de comprobación.
+
+
+## Colores de jugadores, migración y nogal oscuro
+
+El humano juega siempre con **negras**, abajo, y empieza. Las blancas del iPad se colocan arriba. Los peones negros avanzan hacia arriba y coronan en la fila superior; los blancos avanzan hacia abajo y coronan en la inferior. Las damas siguen moviéndose en ambas direcciones. Solo una victoria negra activa «¡Has ganado!» y las estrellas.
+
+El guardado **v2** mantiene la clave local anterior. Al leer un guardado v1 válido se intercambian colores de fichas, turno, colección e historial de repetición, sin cambiar casillas, coronaciones, selección ni progreso de captura: el antiguo humano blanco pasa a ser el humano negro y la antigua máquina negra pasa a blanca. El guardado se valida después de convertir y se escribe como v2, evitando nuevas inversiones en recargas posteriores. También se migran partidas terminadas y turnos de máquina pendientes. Los datos corruptos continúan descartándose con aviso; no se mezclan ni se asignan fichas del rival antiguo al humano nuevo.
+
+La madera exterior de toda la página es nogal oscuro, incluidos márgenes y espacio bajo el botón. El panel de juego y la colección son opacos y claros para mantener contraste, con borde más claro y foco dorado en Nueva partida. No cambian casillas, fichas ni animaciones.
+
+Las pruebas de navegador incluyen captura doble directa inequívoca, triple con ratón y táctil, rutas ambiguas elegibles, destino compartido inmediato/final con ambas opciones, cancelación y elección por teclado, respuesta de la IA blanca, reinicio/restauración con negras y captura de pantalla completa que comprueba píxeles oscuros alrededor y debajo. Se conserva la limitación de tablas: solo triple repetición, no el reglamento completo de competición. No se han podido probar Safari/iPadOS 18, VoiceOver ni el iPad físico de 2019 en este entorno; Chromium real y sus eventos táctiles no sustituyen esa comprobación.

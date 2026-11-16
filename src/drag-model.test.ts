@@ -4,12 +4,12 @@ import { initialGame, positionKey, applyMove, type Board, type Game } from './en
 import { tapSquare } from './interaction';
 import { animatedInput } from './animation';
 import type { SavedGame } from './storage';
-function saved(game: Game = initialGame()): SavedGame { return { version: 1, game, from: null, path: [] }; }
+function saved(game: Game = initialGame()): SavedGame { return { version: 2, game, from: null, path: [] }; }
 function chain(): SavedGame {
   const board: Board = Array(64).fill(null);
-  board[54] = { color: 'white', king: false };
-  board[45] = board[27] = { color: 'black', king: false };
-  return saved({ board, turn: 'white', positions: [positionKey(board, 'white')] });
+  board[54] = { color: 'black', king: false };
+  board[45] = board[27] = { color: 'white', king: false };
+  return saved({ board, turn: 'black', positions: [positionKey(board, 'black')] });
 }
 it('un pequeño temblor sigue siendo una pulsación', () => {
   expect(crossedDragThreshold(3, 4)).toBe(false);
@@ -24,7 +24,7 @@ it('la selección de arrastre es solo una previsualización y usa los destinos l
   expect(dragPlan(state, 16)).toBeNull();
 });
 it('no permite arrastrar durante el turno negro ni con la partida terminada', () => {
-  const state = saved(); state.game.turn = 'black';
+  const state = saved(); state.game.turn = 'white';
   expect(dragPlan(state, 16)).toBeNull();
   const end = chain(); end.game.board[54] = null;
   expect(dragPlan(end, 45)).toBeNull();
@@ -51,9 +51,9 @@ it('permite continuar una captura desde la casilla visible y mantiene la parada 
   expect(dragPlan(state, 54)).toBeNull();
   const tap = vi.fn(async (square: number) => { state = tapSquare(state, square); });
   await commitDrag(state, 36, 18, tap);
-  expect(state.game.board[18]?.color).toBe('white'); expect(state.game.board[27]).toBeNull();
+  expect(state.game.board[18]?.color).toBe('black'); expect(state.game.board[27]).toBeNull();
   const stopped = tapSquare(tapSquare(tapSquare(chain(), 54), 36), 36);
-  expect(stopped.game.turn).toBe('black'); expect(stopped.game.board[27]?.color).toBe('black');
+  expect(stopped.game.turn).toBe('white'); expect(stopped.game.board[27]?.color).toBe('white');
 });
 it('integra el motor, el guardado único y la animación omitida de una suelta', async () => {
   let state = saved(); const animate = vi.fn(async () => {}), persist = vi.fn();

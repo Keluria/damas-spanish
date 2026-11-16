@@ -3,7 +3,7 @@ import type { SavedGame } from './storage';
 
 export interface VisualMove { from: number; to: number; captured?: number }
 export type Cleanup = () => void;
-export interface TapOptions { animate?: boolean }
+export interface TapOptions { animate?: boolean; path?: number[] }
 
 export function moveDuration(move: VisualMove): number {
   const squares = Math.abs(Math.floor(move.to / 8) - Math.floor(move.from / 8));
@@ -17,6 +17,7 @@ interface Effects {
   animate(move: VisualMove): Promise<Cleanup | void>;
   capture?(move: VisualMove, next: SavedGame, attackerAnimated: boolean): Promise<Cleanup | void>;
   setBusy(busy: boolean): void;
+  choosePath?(saved: SavedGame, target: number, paths: number[][]): Promise<number[] | undefined>;
 }
 /** The existing interaction is the only authority for rules and state. */
 export function animatedInput(effects: Effects) {
@@ -26,30 +27,36 @@ export function animatedInput(effects: Effects) {
     async tap(square: number, options: TapOptions = {}) {
       if (busy) return; // Ignore input rather than queueing unintended turns.
       const before = effects.current();
-      const path = destinationPaths(before).get(square);
-      if (!path) {
+      const paths = destinationPaths(before).get(square);
+      if (!paths) {
         const next = tapSquare(before, square);
         if (next !== before) { effects.persist(next); effects.present(next, square); }
         return;
       }
-      const steps: { next: SavedGame; move: VisualMove }[] = [];
-      let state = before;
-      for (const destination of path) {
-        const option = candidates(state).find(m => m.path[state.path.length] === destination)!;
-        const move = { from: (state.path.at(-1) ?? state.from)!, to: destination,
-          captured: option.captures[state.path.length] };
-        state = tapSquare(state, destination);
-        steps.push({ next: state, move });
-      }
-      // A shortcut chooses this stopping point, even if further jumps are possible.
-      // A single landing retains the familiar optional continuation by stages.
-      if (path.length > 1 && state.path.length) {
-        state = tapSquare(state, square);
-        steps[steps.length - 1].next = state;
-      }
       busy = true;
       effects.setBusy(true);
       try {
+        const path = options.path ?? (paths.length === 1 ? paths[0] : await effects.choosePath?.(before, square, paths));
+        if (!path || !paths.some(route => route.length === path.length && route.every((p, i) => p === path[i]))) return;
+        if (!path.length) {
+          const next = tapSquare(before, square);
+          effects.persist(next); effects.present(next, square); return;
+        }
+        const steps: { next: SavedGame; move: VisualMove }[] = [];
+        let state = before;
+        for (const destination of path) {
+          const option = candidates(state).find(m => m.path[state.path.length] === destination)!;
+          const move = { from: (state.path.at(-1) ?? state.from)!, to: destination,
+            captured: option.captures[state.path.length] };
+          state = tapSquare(state, destination);
+          steps.push({ next: state, move });
+        }
+        // A shortcut chooses this stopping point, even if further jumps are possible.
+        // A single landing retains the familiar optional continuation by stages.
+        if (path.length > 1 && state.path.length) {
+          state = tapSquare(state, square);
+          steps[steps.length - 1].next = state;
+        }
         // Store the entire chosen route before motion: reload restores its final result.
         // Intermediate frames are presentation only and must not overwrite this save.
         effects.persist(state);

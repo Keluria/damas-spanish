@@ -7,12 +7,12 @@ import { tapSquare } from './interaction';
 
 beforeEach(()=>vi.useFakeTimers());
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
-function initial():SavedGame {return {version:1,game:initialGame(),from:null,path:[]};}
-function blackChain():SavedGame {
+function initial():SavedGame {return {version:2,game:initialGame(),from:null,path:[]};}
+function whiteChain():SavedGame {
   const board:Board=Array(64).fill(null);
-  board[18]={color:'black',king:false};
-  board[27]=board[45]=board[63]={color:'white',king:false};
-  return {version:1,game:{board,turn:'black',positions:[positionKey(board,'black')]},from:null,path:[]};
+  board[18]={color:'white',king:false};
+  board[27]=board[45]=board[63]={color:'black',king:false};
+  return {version:2,game:{board,turn:'white',positions:[positionKey(board,'white')]},from:null,path:[]};
 }
 function harness(start=initial(), choose=(_state:SavedGame,moves:readonly Move[])=>moves[0]) {
   let state=start, blocked=false;
@@ -28,27 +28,27 @@ function harness(start=initial(), choose=(_state:SavedGame,moves:readonly Move[]
 }
 async function humanMove(h:ReturnType<typeof harness>) {await h.opponent.humanTap(41);await h.opponent.humanTap(32);}
 
-it('empieza siempre con blancas y no responde hasta que termina el turno humano', async()=>{
+it('empieza siempre con negras y no responde hasta que termina el turno humano', async()=>{
   const h=harness();h.opponent.resume();
   await vi.advanceTimersByTimeAsync(2000);expect(h.choose).not.toHaveBeenCalled();
   await h.opponent.humanTap(41);await vi.advanceTimersByTimeAsync(2000);
   expect(h.choose).not.toHaveBeenCalled();
-  await h.opponent.humanTap(32);expect(h.state().game.turn).toBe('black');
+  await h.opponent.humanTap(32);expect(h.state().game.turn).toBe('white');
   await vi.advanceTimersByTimeAsync(649);expect(h.choose).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(1);expect(h.choose).toHaveBeenCalledTimes(1);
-  expect(h.state().game.turn).toBe('white');
+  expect(h.state().game.turn).toBe('black');
   expect(h.animate).toHaveBeenCalledTimes(2); // Human and machine share the same animation input.
 });
-it('ignora las fichas negras en turno humano y todos los toques en turno máquina',async()=>{
+it('ignora las fichas blancas en turno humano y todos los toques en turno máquina',async()=>{
   const h=harness(),original=h.state();await h.opponent.humanTap(16);expect(h.state()).toBe(original);
-  await humanMove(h);const black=h.state();
-  await h.opponent.humanTap(16);await h.opponent.humanTap(25);expect(h.state()).toBe(black);
+  await humanMove(h);const white=h.state();
+  await h.opponent.humanTap(16);await h.opponent.humanTap(25);expect(h.state()).toBe(white);
 });
 it('no duplica la respuesta al reanudar varias veces o pulsar rápidamente',async()=>{
   const h=harness();await humanMove(h);
   for(let i=0;i<10;i++){h.opponent.resume();await h.opponent.humanTap(18);}
   await vi.advanceTimersByTimeAsync(5000);
-  expect(h.choose).toHaveBeenCalledTimes(1);expect(h.state().game.turn).toBe('white');
+  expect(h.choose).toHaveBeenCalledTimes(1);expect(h.state().game.turn).toBe('black');
 });
 it('el turno del iPad se guarda y coincide con aplicar su movimiento legal',async()=>{
   const h=harness();await humanMove(h);const before=h.state();const expected=applyMove(before.game,legalMoves(before.game)[0]);
@@ -65,50 +65,50 @@ it('la confirmación puede suspender la espera y reanudar sin reiniciar',async()
   const h=harness();await humanMove(h);const before=h.state();
   h.opponent.suspend();await vi.advanceTimersByTimeAsync(2000);expect(h.state()).toBe(before);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
-  expect(h.choose).toHaveBeenCalledTimes(1);expect(h.state().game.turn).toBe('white');
+  expect(h.choose).toHaveBeenCalledTimes(1);expect(h.state().game.turn).toBe('black');
 });
 it('restaura un turno negro y responde una sola vez sin toque humano',async()=>{
   const start=tapSquare(tapSquare(initial(),41),32);
   const h=harness(start);saveGame(start);
   const restored=harness(loadGame().saved);restored.opponent.resume();
   await vi.advanceTimersByTimeAsync(650);
-  expect(restored.state().game.turn).toBe('white');expect(restored.choose).toHaveBeenCalledTimes(1);
+  expect(restored.state().game.turn).toBe('black');expect(restored.choose).toHaveBeenCalledTimes(1);
 });
 it('una cadena humana opcional no dispara la IA hasta que decide terminar',async()=>{
-  const board:Board=Array(64).fill(null);board[54]={color:'white',king:false};board[45]=board[27]={color:'black',king:false};
-  const h=harness({version:1,game:{board,turn:'white',positions:[positionKey(board,'white')]},from:null,path:[]});
+  const board:Board=Array(64).fill(null);board[54]={color:'black',king:false};board[45]=board[27]={color:'white',king:false};
+  const h=harness({version:2,game:{board,turn:'black',positions:[positionKey(board,'black')]},from:null,path:[]});
   await h.opponent.humanTap(54);await h.opponent.humanTap(36);
   await vi.advanceTimersByTimeAsync(2000);expect(h.choose).not.toHaveBeenCalled();
-  await h.opponent.humanTap(36);expect(h.state().game.turn).toBe('black');
+  await h.opponent.humanTap(36);expect(h.state().game.turn).toBe('white');
   await vi.advanceTimersByTimeAsync(650);expect(h.choose).toHaveBeenCalledTimes(1);
 });
 it('la máquina puede terminar su captura después del primer salto',async()=>{
-  const start=blackChain(),h=harness(start,(_s,moves)=>moves.find(m=>m.captures.length===1)!);
+  const start=whiteChain(),h=harness(start,(_s,moves)=>moves.find(m=>m.captures.length===1)!);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
   expect(h.state().game).toEqual(applyMove(start.game,{from:18,path:[36],captures:[27]}));
   expect(h.animate.mock.calls.map(([move])=>move)).toEqual([{from:18,to:36,captured:27}]);
 });
 it('anima cada salto de una cadena completa en el orden correcto',async()=>{
-  const start=blackChain(),h=harness(start,(_s,moves)=>moves.find(m=>m.captures.length===2)!);
+  const start=whiteChain(),h=harness(start,(_s,moves)=>moves.find(m=>m.captures.length===2)!);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
   expect(h.state().game).toEqual(applyMove(start.game,{from:18,path:[36,54],captures:[27,45]}));
   expect(h.animate.mock.calls.map(([move])=>move)).toEqual([{from:18,to:36,captured:27},{from:36,to:54,captured:45}]);
 });
 it('reanuda una captura negra guardada sin repetir el primer salto',async()=>{
-  const partial=tapSquare(tapSquare(blackChain(),18),36);
+  const partial=tapSquare(tapSquare(whiteChain(),18),36);
   const h=harness(partial,(_s,moves)=>moves.find(m=>m.path.length===2)!);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
   expect(h.animate.mock.calls.map(([move])=>move)).toEqual([{from:36,to:54,captured:45}]);
-  expect(h.state().game.turn).toBe('white');
+  expect(h.state().game.turn).toBe('black');
 });
 it('una captura restaurada puede terminar sin otro desplazamiento',async()=>{
-  const partial=tapSquare(tapSquare(blackChain(),18),36);
+  const partial=tapSquare(tapSquare(whiteChain(),18),36);
   const h=harness(partial,(_s,moves)=>moves.find(m=>m.path.length===1)!);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
-  expect(h.animate).not.toHaveBeenCalled();expect(h.state().game.turn).toBe('white');
+  expect(h.animate).not.toHaveBeenCalled();expect(h.state().game.turn).toBe('black');
 });
 it('no permite reiniciar ni tocar durante un salto y recupera el guardado adelantado',async()=>{
-  const h=harness(blackChain(),(_s,moves)=>moves.find(m=>m.path.length===2)!);
+  const h=harness(whiteChain(),(_s,moves)=>moves.find(m=>m.path.length===2)!);
   let land!:()=>void;h.animate.mockImplementationOnce(()=>new Promise<void>(resolve=>{land=resolve;}));
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
   expect(h.input.busy).toBe(true);expect(h.opponent.newGame()).toBe(false);
@@ -117,10 +117,22 @@ it('no permite reiniciar ni tocar durante un salto y recupera el guardado adelan
   h.opponent.suspend();land();await vi.advanceTimersByTimeAsync(0);
   expect(h.state().path).toEqual([36]);expect(h.animate).toHaveBeenCalledTimes(1);
   h.opponent.resume();await vi.advanceTimersByTimeAsync(650);
-  expect(h.state().game.turn).toBe('white');expect(h.animate).toHaveBeenCalledTimes(2);
+  expect(h.state().game.turn).toBe('black');expect(h.animate).toHaveBeenCalledTimes(2);
 });
 it('no programa respuestas si la partida ya terminó',async()=>{
-  const state=blackChain();state.game.board[18]=null;state.game.positions=[positionKey(state.game.board,'black')];
+  const state=whiteChain();state.game.board[18]=null;state.game.positions=[positionKey(state.game.board,'white')];
   const h=harness(state);h.opponent.resume();await vi.advanceTimersByTimeAsync(3000);
   expect(h.choose).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0);
+});
+
+it('la IA resuelve explícitamente su etapa aunque el destino también admita una cadena', async()=>{
+  const board:Board=Array(64).fill(null);board[54]={color:'white',king:true};
+  for(const square of [11,13,29,31,45]) board[square]={color:'black',king:false};
+  let saved:SavedGame={version:2,game:{board,turn:'white',positions:[positionKey(board,'white')]},from:null,path:[]};
+  const choosePath=vi.fn(async()=>undefined);
+  const input=animatedInput({current:()=>saved,persist:vi.fn(),present:next=>{saved=next;},animate:async()=>{},setBusy:vi.fn(),choosePath});
+  const opponent=ipadOpponent({current:()=>saved,tap:input.tap,busy:()=>input.busy,replace:next=>{saved=next;},
+    choose:(_state,moves)=>moves.find(m=>m.path.length===1&&m.path[0]===36)!});
+  opponent.resume();await vi.advanceTimersByTimeAsync(650);
+  expect(choosePath).not.toHaveBeenCalled();expect(saved.game.turn).toBe('black');expect(saved.captured).toHaveLength(1);
 });

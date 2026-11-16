@@ -1,11 +1,11 @@
 :root {
   font-family: ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #3d2d20;
-  background-color: #e9dcc6;
+  background-color: #291c16;
   background-image:
-    repeating-linear-gradient(92deg, transparent 0 47px, #81552907 48px 49px, transparent 50px 121px),
-    repeating-linear-gradient(88deg, transparent 0 9px, #fffaf00f 10px 11px, transparent 12px 31px),
-    linear-gradient(110deg, #f0e5d2, #e4d3b7 60%, #eddfc7);
+    repeating-linear-gradient(92deg, transparent 0 47px, #10090538 48px 49px, transparent 50px 121px),
+    repeating-linear-gradient(88deg, transparent 0 9px, #bc946b08 10px 11px, transparent 12px 31px),
+    linear-gradient(110deg, #342319, #201610 60%, #3b281d);
   font-synthesis: none;
   font-size: 18px;
 }
@@ -13,7 +13,7 @@
 body { margin: 0; min-height: 100vh; }
 main { max-width: 850px; margin: auto; padding: 28px 24px 40px; }
 .game {
-  background: #fff8e9d9;
+  background: #fff8e9;
   border: 1px solid #b69c76;
   padding: 20px;
   border-radius: 16px;
@@ -100,7 +100,7 @@ button:not(.cell) {
   min-height: 60px;
   padding: 16px 28px;
   border-radius: 10px;
-  border: 2px solid #49301f;
+  border: 2px solid #c7a579;
   background: linear-gradient(#6b482f, #573920);
   color: #fff7e5;
   font-weight: 650;
@@ -160,7 +160,7 @@ dialog form { display: flex; gap: 12px; flex-wrap: wrap; }
 .piece.dragging::after { display: none; }
 
 /* Compact wooden tray: reserve stable destinations before the first capture. */
-.captured-tray { margin-top: 14px; padding: 6px; border: 1px solid #b69c76; border-radius: 7px; background: #ead7b14d; }
+.captured-tray { margin-top: 14px; padding: 6px; border: 1px solid #b69c76; border-radius: 7px; background: #ead7b1; }
 .captured-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
 .captured-slot { height: 32px; display: flex; justify-content: center; align-items: center; }
 .captured-slot .piece { width: clamp(16px, 2.8vw, 28px); height: clamp(16px, 2.8vw, 28px); border-width: 1px; font-size: clamp(.5rem, 1.35vw, .75rem); }
@@ -169,3 +169,8 @@ dialog form { display: flex; gap: 12px; flex-wrap: wrap; }
 .capture-layer > .piece { position: absolute; margin: 0; pointer-events: none; }
 .capture-layer .piece::after { display: none; }
 .captured-travelling { will-change: transform; }
+
+#restart:focus-visible { outline-color: #ffe2a0; }
+.route-options { display: grid; gap: 12px; margin: 20px 0; }
+.route-options button { text-align: left; width: 100%; }
+.route-options small { display: block; font-size: 1rem; margin-top: 6px; font-weight: 400; }

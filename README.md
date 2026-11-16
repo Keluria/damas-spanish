@@ -158,3 +158,38 @@ Las pull requests ejecutan las comprobaciones sin publicar. El trabajo de compil
 6. Mover una ficha, cerrar y volver a abrir para comprobar el guardado. Activar modo avión, cerrar y volver a abrir desde el icono instalado para comprobar el funcionamiento offline. Desactivar modo avión después de la prueba.
 
 El comprobador del artefacto detecta rutas y archivos incorrectos antes de publicar; no sustituye la prueba real de instalación, caché y funcionamiento offline en Safari. La caché y el guardado del sitio publicado son independientes de los del servidor local. Para recibir futuras actualizaciones, recuperar la conexión y cerrar todas las ventanas de la versión anterior antes de volver a abrir la aplicación.
+
+## Vista temporal de prueba de victoria (solo desarrollo)
+
+Para comprobar la celebración sin jugar una partida completa, usar la rama de esta PR y ejecutar:
+
+```sh
+npm ci
+npm run dev:victory
+```
+
+Abrir **http://localhost:5175/damas-spanish/** en el navegador de la máquina que ejecuta el servidor. El título de la pestaña será «Prueba de victoria · Desarrollo». Para abrirla desde un iPad en la misma red, usar la dirección de red que muestra Vite con el puerto 5175. No es una dirección pública ni un despliegue en GitHub Pages.
+
+1. Tocar la única ficha blanca, en **e4** (quinta columna y quinta fila desde arriba).
+2. Tocar **c6** (tercera columna y tercera fila desde arriba), dos casillas en diagonal hacia arriba a la izquierda. Se captura la única negra de d5.
+3. Al terminar el salto, aparece «¡Has ganado!», «¡Muy bien jugado!» y la celebración real de cinco estrellas durante unos dos segundos.
+4. Pulsar el único botón **Nueva partida**: reinicia directamente con 12 fichas por color y blancas al turno.
+5. **Recargar la página** para volver al escenario de dos fichas y repetir la celebración. Si el sistema tiene Reducir movimiento activado, se muestra el resultado sin animaciones, como en el juego normal.
+
+El servidor específico utiliza `vite.victory.config.ts`: conserva el HTML, motor, interacción, animación, IA y pantalla de resultado reales. Solo sustituye el adaptador de guardado por otro en memoria, inicializado con la posición de prueba. No lee ni escribe `localStorage`, no modifica partidas existentes y no añade controles al juego normal. Usa un puerto separado y falla si ya está ocupado.
+
+`npm run dev`, `npm run build`, `npm run preview` y el despliegue continúan usando la configuración normal. La configuración especial rechaza explícitamente `vite build` y `vite preview`. El escenario no se importa en producción y no hay parámetros URL que lo activen.
+
+### Comprobación automatizada y vídeo
+
+`npm test` incluye pruebas de legalidad, captura ganadora, resultado después del salto, reinicio e independencia del guardado. El workflow **Verify development victory preview** prueba además la vista en Chromium real con Playwright y guarda el artefacto **victory-preview**, con las capturas y **victory.webm**. Se puede descargar desde la ejecución de Actions de esta PR para ver la celebración sin ejecutar un servidor. Este workflow solo comprueba; no publica.
+
+Para repetir esa comprobación de navegador localmente (las herramientas se instalan solo en `node_modules`, sin modificar el manifiesto ni el lockfile):
+
+```sh
+npm install --no-save --package-lock=false playwright@1.65.1
+npx playwright install chromium
+npm run test:victory:browser
+```
+
+La prueba verifica la captura y las estrellas reales, el botón único y el reinicio directo, que la partida existente permanezca intacta, que la recarga reponga el escenario, que la compilación especial esté bloqueada y que parámetros URL no activen la prueba en el artefacto de producción.

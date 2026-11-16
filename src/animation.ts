@@ -1,4 +1,4 @@
-import { candidates, tapSquare } from './interaction';
+import { candidates, destinationPaths, tapSquare } from './interaction';
 import type { SavedGame } from './storage';
 
 export interface VisualMove { from: number; to: number; captured?: number }
@@ -26,41 +26,49 @@ export function animatedInput(effects: Effects) {
     async tap(square: number, options: TapOptions = {}) {
       if (busy) return; // Ignore input rather than queueing unintended turns.
       const before = effects.current();
-      const next = tapSquare(before, square);
-      if (next === before) return;
-      const option = candidates(before).find(m => m.path[before.path.length] === square);
-      const from = before.path.at(-1) ?? before.from;
-      if (!option || from === null) {
-        effects.persist(next);
-        effects.present(next, square);
+      const path = destinationPaths(before).get(square);
+      if (!path) {
+        const next = tapSquare(before, square);
+        if (next !== before) { effects.persist(next); effects.present(next, square); }
         return;
+      }
+      const steps: { next: SavedGame; move: VisualMove }[] = [];
+      let state = before;
+      for (const destination of path) {
+        const option = candidates(state).find(m => m.path[state.path.length] === destination)!;
+        const move = { from: (state.path.at(-1) ?? state.from)!, to: destination,
+          captured: option.captures[state.path.length] };
+        state = tapSquare(state, destination);
+        steps.push({ next: state, move });
+      }
+      // A shortcut chooses this stopping point, even if further jumps are possible.
+      // A single landing retains the familiar optional continuation by stages.
+      if (path.length > 1 && state.path.length) {
+        state = tapSquare(state, square);
+        steps[steps.length - 1].next = state;
       }
       busy = true;
       effects.setBusy(true);
-      let cleanup: Cleanup | void = undefined;
-      let captureCleanup: Cleanup | void = undefined;
       try {
-        // Durable before motion starts: reloading during a jump restores the chosen move.
-        effects.persist(next);
-        const move = { from, to: square, captured: option.captures[before.path.length] };
-        if (options.animate !== false) {
-          cleanup = await effects.animate(move);
-        }
-        if (move.captured !== undefined) captureCleanup = await effects.capture?.(move, next, options.animate !== false);
-      } catch (error) {
-        console.error('No se pudo completar la animación de la jugada', error);
-        // An unavailable/cancelled animation never rolls back or changes a legal move.
-      } finally {
-        try {
-          // Replace the board before removing the forwards-filled transform: no flash at origin.
-          effects.present(next, square);
-        } finally {
-          try { captureCleanup?.(); }
-          finally {
-            try { cleanup?.(); }
-            finally { busy = false; effects.setBusy(false); }
+        // Store the entire chosen route before motion: reload restores its final result.
+        // Intermediate frames are presentation only and must not overwrite this save.
+        effects.persist(state);
+        for (const { next, move } of steps) {
+          let cleanup: Cleanup | void = undefined;
+          let captureCleanup: Cleanup | void = undefined;
+          const animated = path.length > 1 || options.animate !== false;
+          try {
+            if (animated) cleanup = await effects.animate(move);
+            if (move.captured !== undefined) captureCleanup = await effects.capture?.(move, next, animated);
+          } catch (error) {
+            console.error('No se pudo completar la animación de la jugada', error);
+          } finally {
+            try { effects.present(next, move.to); }
+            finally { try { captureCleanup?.(); } finally { cleanup?.(); } }
           }
         }
+      } finally {
+        busy = false; effects.setBusy(false);
       }
     }
   };

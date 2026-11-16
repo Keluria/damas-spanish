@@ -1,7 +1,7 @@
 import './style.css';
 import { animatedInput, animatePiece } from './animation';
 import { legalMoves, outcome, type Board } from './engine';
-import { candidates } from './interaction';
+import { candidates, destinationPaths } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { ipadOpponent } from './opponent';
 import { resultScreen } from './result';
@@ -49,7 +49,7 @@ function render(focus?: number, restoring = false, display: SavedGame = saved) {
   const moves = end ? [] : legalMoves(display.game);
   const humanTurn = display.game.turn === 'white';
   boardEl.setAttribute('aria-disabled', String(!humanTurn || !!end));
-  const next = new Set((humanTurn ? candidates(display) : []).filter(m => m.path.length > display.path.length).map(m => m.path[display.path.length]));
+  const next = new Set(humanTurn ? destinationPaths(display).keys() : []);
   const current = display.path.at(-1) ?? display.from;
   const board: Board = display.game.board.slice();
   if (display.from !== null && display.path.length) {

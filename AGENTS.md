@@ -35,9 +35,10 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Sin anuncios, temporizadores, penalizaciones ni distracciones.
 - Resaltar movimientos permitidos.
 - Dificultad baja para jugar contra la máquina.
-- Botones grandes y confirmación antes de reiniciar.
+- Botón grande «Nueva partida»: confirmación durante el juego y reinicio directo tras el resultado.
+- Resultado después de la última animación; celebración suave solo para victoria humana, sin repetirse al restaurar. Respetar reducción de movimiento.
 - Guardado automático y recuperación de partida.
-- Pantalla limitada a tablero, indicador del turno y botón grande «Nueva partida». Sin ajustes, selectores de reglas, menús ocultos ni PIN.
+- Pantalla de juego limitada a tablero, indicador del turno y botón grande «Nueva partida»; al terminar, sustituir tablero por resultado y conservar un único botón. Sin ajustes, selectores de reglas, menús ocultos ni PIN.
 
 ## Desarrollo
 1. Crear tablero y motor de reglas.

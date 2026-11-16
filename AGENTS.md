@@ -23,6 +23,12 @@ Desarrollar una PWA de damas españolas para una persona mayor con Alzheimer. De
 - Coronación, fin de partida y reglas de empate.
 - Separar la lógica de reglas de la interfaz y crear pruebas automatizadas.
 
+## Rival
+- El humano lleva siempre blancas y empieza la partida; el iPad controla negras automáticamente.
+- Dificultad fácil fija y cierta variación, utilizando los movimientos del motor existente.
+- Mantener capturas opcionales para ambos, animaciones por salto y recuperación de turnos negros interrumpidos.
+- No añadir selectores de modo ni dificultad.
+
 ## Accesibilidad
 - Fichas grandes, alto contraste y grandes zonas táctiles.
 - Selección por dos pulsaciones, sin arrastrar.

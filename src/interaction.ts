@@ -1,4 +1,5 @@
 import { applyMove, legalMoves, outcome, type Move } from './engine';
+import { recordCapture } from './captured';
 import type { SavedGame } from './storage';
 
 export function candidates(saved: SavedGame): Move[] {
@@ -18,9 +19,11 @@ export function tapSquare(saved: SavedGame, square: number): SavedGame {
   const options = moves.filter(m => m.path[saved.path.length] === square);
   if (options.length) {
     const path = [...saved.path, square];
+    const victim = options[0].captures[saved.path.length];
+    const progress = victim === undefined ? saved : recordCapture(saved, victim);
     const completed = options.find(m => m.path.length === path.length);
-    if (completed && !options.some(m => m.path.length > path.length)) return finish(saved, completed);
-    return { ...saved, path };
+    if (completed && !options.some(m => m.path.length > path.length)) return finish(progress, completed);
+    return { ...progress, path };
   }
   // Once a chain starts, only this piece can continue or finish the turn.
   if (saved.path.length) return saved;

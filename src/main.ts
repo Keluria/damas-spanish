@@ -5,6 +5,8 @@ import { candidates } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { ipadOpponent } from './opponent';
 import { resultScreen } from './result';
+import { renderCaptured } from './captured';
+import { captureAnimations } from './capture-animation';
 import { installDragging } from './drag';
 import { commitDrag } from './drag-model';
 import type { SavedGame } from './storage';
@@ -13,6 +15,8 @@ const loaded = loadGame();
 let saved = loaded.saved;
 let warning = loaded.warning;
 const boardEl = el('board');
+const capturedEl = el('captured');
+const captureMotion = captureAnimations(boardEl, capturedEl);
 const name = (color: string) => color === 'white' ? 'blancas' : 'negras';
 const squareName = (i: number) => `${'abcdefgh'[i % 8]}${8 - Math.floor(i / 8)}`;
 function persist(next = saved) {
@@ -58,6 +62,7 @@ function render(focus?: number, restoring = false, display: SavedGame = saved) {
     el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : display.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : display.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
   }
   el('turn-piece').className = `piece ${display.game.turn}`;
+  renderCaptured(capturedEl, display.captured ?? []);
   boardEl.replaceChildren();
   for (let i = 0; i < 64; i++) {
     const playable = (Math.floor(i / 8) + i % 8) % 2 === 0;
@@ -94,7 +99,9 @@ const input = animatedInput({
   persist,
   present: (next, focus) => { const humanTurn = saved.game.turn === 'white'; saved = next; render(humanTurn ? focus : undefined); },
   animate: move => animatePiece(boardEl, move),
+  capture: (move, next, animated) => captureMotion.transfer(move, next, animated),
   setBusy: busy => {
+    if (busy) captureMotion.begin(); else captureMotion.end();
     moving = busy;
     boardEl.setAttribute('aria-busy', String(busy));
     el<HTMLButtonElement>('restart').disabled = busy || dragging;

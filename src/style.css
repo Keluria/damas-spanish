@@ -158,3 +158,14 @@ dialog form { display: flex; gap: 12px; flex-wrap: wrap; }
 .drag-layer { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
 .piece.dragging { position: absolute; margin: 0; pointer-events: none; will-change: transform; }
 .piece.dragging::after { display: none; }
+
+/* Compact wooden tray: reserve stable destinations before the first capture. */
+.captured-tray { margin-top: 14px; padding: 6px; border: 1px solid #b69c76; border-radius: 7px; background: #ead7b14d; }
+.captured-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
+.captured-slot { height: 32px; display: flex; justify-content: center; align-items: center; }
+.captured-slot .piece { width: clamp(16px, 2.8vw, 28px); height: clamp(16px, 2.8vw, 28px); border-width: 1px; font-size: clamp(.5rem, 1.35vw, .75rem); }
+.capture-placeholder { visibility: hidden; }
+.capture-layer { position: fixed; inset: 0; z-index: 1100; pointer-events: none; }
+.capture-layer > .piece { position: absolute; margin: 0; pointer-events: none; }
+.capture-layer .piece::after { display: none; }
+.captured-travelling { will-change: transform; }

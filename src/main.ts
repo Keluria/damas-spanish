@@ -4,6 +4,7 @@ import { legalMoves, outcome, type Board } from './engine';
 import { candidates } from './interaction';
 import { loadGame, saveGame } from './storage';
 import { ipadOpponent } from './opponent';
+import { resultScreen } from './result';
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const loaded = loadGame();
 let saved = loaded.saved;
@@ -16,7 +17,26 @@ function persist(next = saved) {
   el('save-status').textContent = notice;
   el('save-status').hidden = !notice;
 }
-function render(focus?: number) {
+let moving = false;
+const result = resultScreen({
+  show: ({ title, message, celebrate }) => {
+    el('play-area').hidden = true;
+    el('result-title').textContent = title;
+    el('result-message').textContent = message;
+    el('result-message').hidden = !message;
+    el('result-stars').hidden = !celebrate;
+    el('result').classList.toggle('celebrate', celebrate);
+    el('result').hidden = false;
+    el('result-title').focus();
+  },
+  hide: () => {
+    el('result').hidden = true;
+    el('result').classList.remove('celebrate');
+    el('play-area').hidden = false;
+    el('status').focus({ preventScroll: true });
+  }
+});
+function render(focus?: number, restoring = false) {
   const end = outcome(saved.game);
   const moves = end ? [] : legalMoves(saved.game);
   const humanTurn = saved.game.turn === 'white';
@@ -29,8 +49,10 @@ function render(focus?: number) {
     candidates(saved)[0]?.captures.slice(0, saved.path.length).forEach(i => { board[i] = null; });
     board[current!] = piece;
   }
-  el('status').textContent = end ? ('winner' in end ? `Ganan las ${name(end.winner)}` : 'Tablas por repetición') : humanTurn ? 'Tu turno · blancas' : 'Turno del iPad · negras';
-  el('hint').textContent = end ? 'Puedes empezar una nueva partida.' : !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : saved.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : saved.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
+  if (!end) {
+    el('status').textContent = humanTurn ? 'Tu turno · blancas' : 'Turno del iPad · negras';
+    el('hint').textContent = !humanTurn ? 'El iPad mueve las fichas negras. Espera un momento.' : saved.path.length ? 'Toca tu ficha para terminar o una casilla marcada para seguir.' : saved.from !== null ? 'Ahora toca una casilla marcada.' : 'Toca una ficha para moverla.';
+  }
   el('turn-piece').className = `piece ${saved.game.turn}`;
   boardEl.replaceChildren();
   for (let i = 0; i < 64; i++) {
@@ -58,7 +80,8 @@ function render(focus?: number) {
     } else cell.setAttribute('aria-hidden', 'true');
     boardEl.append(cell);
   }
-  if (focus !== undefined) boardEl.querySelector<HTMLButtonElement>(`[data-square="${focus}"]`)?.focus({ preventScroll: true });
+  if (!end && focus !== undefined) boardEl.querySelector<HTMLButtonElement>(`[data-square="${focus}"]`)?.focus({ preventScroll: true });
+  result.update(saved.game, moving, restoring);
 }
 const input = animatedInput({
   current: () => saved,
@@ -66,8 +89,10 @@ const input = animatedInput({
   present: (next, focus) => { const humanTurn = saved.game.turn === 'white'; saved = next; render(humanTurn ? focus : undefined); },
   animate: move => animatePiece(boardEl, move),
   setBusy: busy => {
+    moving = busy;
     boardEl.setAttribute('aria-busy', String(busy));
     el<HTMLButtonElement>('restart').disabled = busy;
+    if (!busy) result.update(saved.game);
   }
 });
 const opponent = ipadOpponent({
@@ -78,7 +103,17 @@ const opponent = ipadOpponent({
 });
 function click(i: number) { void opponent.humanTap(i); }
 const dialog = el<HTMLDialogElement>('restart-dialog');
-el('restart').addEventListener('click', () => { if (input.busy) return; opponent.suspend(); dialog.returnValue = ''; dialog.showModal(); });
+el('restart').addEventListener('click', () => {
+  if (input.busy) return;
+  opponent.suspend();
+  if (result.finished) {
+    opponent.newGame();
+    if (!document.hidden) opponent.resume();
+  } else {
+    dialog.returnValue = '';
+    dialog.showModal();
+  }
+});
 dialog.addEventListener('close', () => {
   if (dialog.returnValue === 'restart') opponent.newGame();
   if (!document.hidden) opponent.resume();
@@ -88,6 +123,6 @@ document.addEventListener('visibilitychange', () => {
   else opponent.resume();
 });
 persist();
-render();
+render(undefined, true);
 if (document.hidden) opponent.suspend();
 else opponent.resume();

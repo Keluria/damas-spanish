@@ -71,7 +71,8 @@ Abrir la ruta `/damas-spanish/` del servidor. `npm run build` comprueba TypeScri
 - `src/opponent.ts`: coordinación de los turnos negros, pausa breve, cancelación al reiniciar y recuperación de capturas interrumpidas.
 - `src/interaction.ts`: selección por dos pulsaciones y capturas encadenadas opcionales, sin dependencia del DOM.
 - `src/animation.ts`: presentación animada de cada desplazamiento y bloqueo temporal de entrada; usa la interacción existente sin cambiar el motor.
-- `src/main.ts`: tablero, indicador del turno y botón grande «Nueva partida» con confirmación. Sin ajustes, selector de reglas, menús ocultos ni PIN. Solo se muestran avisos adicionales si no se puede guardar o recuperar la partida.
+- `src/result.ts`: presentación única del resultado calculado por el motor, aplazada hasta finalizar la última animación.
+- `src/main.ts`: tablero, indicador del turno y botón grande «Nueva partida» con confirmación durante la partida y reinicio directo después del resultado. Sin ajustes, selector de reglas, menús ocultos ni PIN. Solo se muestran avisos adicionales si no se puede guardar o recuperar la partida.
 - `src/storage.ts`: guardado local versionado y validado. Conserva también la selección y el progreso de una captura múltiple; mantiene la compatibilidad con el formato anterior. Los datos inválidos se descartan con aviso y el almacenamiento bloqueado no impide jugar.
 - `src/*.test.ts`: pruebas del motor y de la persistencia.
 - `vite.config.ts`: configuración de Vite y PWA con Workbox.
@@ -101,6 +102,20 @@ Se anima la ficha existente con Web Animations y `transform`, sin copias ni camb
 La preferencia del sistema **Reducir movimiento** (`prefers-reduced-motion`) hace que los movimientos sean instantáneos. Si cambia durante una animación, se gira la pantalla o se oculta la página, se presenta la posición final sin bloquear el juego. También se usa movimiento instantáneo si Web Animations no está disponible. No se añaden ajustes ni botones.
 
 Las pruebas automatizadas comprueban equivalencia con la interacción sin animación, guardado durante un salto, bloqueo de pulsaciones, capturas secuenciales y parada voluntaria, reducción de movimiento y recuperación tras interrupciones. Queda pendiente verificar visualmente la fluidez en Safari/iPadOS 18 y en el iPad físico de 2019.
+
+### Final de partida
+
+Al terminar, el resultado sustituye al tablero dentro del mismo panel de madera. Se consulta `outcome()` del motor: victoria por falta de fichas o movimientos, y tablas según la triple repetición ya implementada. No cambian las reglas ni la dificultad del rival.
+
+- Si ganan las blancas: «¡Has ganado!» y «¡Muy bien jugado!», con aparición gradual y cinco estrellas doradas discretas durante unos dos segundos, sin repeticiones, sonidos ni destellos.
+- Si ganan las negras: «Partida terminada» y un mensaje amable, sin celebración.
+- Si hay empate: «¡Tablas! Buena partida», sin celebración.
+
+Los tres resultados conservan **un único botón grande «Nueva partida»**, que reinicia directamente y devuelve el primer turno al humano. Durante una partida en curso el botón sigue pidiendo confirmación.
+
+La presentación espera a que termine la última animación de ficha y su limpieza. El foco pasa al título del resultado, asociado a su mensaje para lectores de pantalla; los elementos decorativos no se anuncian. Con `prefers-reduced-motion` el mensaje y las estrellas son estáticos. Al reabrir una partida ya terminada se muestra el resultado sin repetir la celebración y sin cambiar el formato de guardado.
+
+Las pruebas cubren victoria, derrota, tablas, presentación tras el último salto, reinicio, restauración y ausencia de celebraciones duplicadas. También se ha comprobado en Chromium real con Playwright el resultado de una captura ganadora, victoria del rival, triple repetición, botón único, reinicio directo, confirmación durante la partida y reducción de movimiento. Pendiente verificación en Safari/iPadOS 18 y VoiceOver del iPad físico.
 
 ### Instalación y uso sin conexión
 

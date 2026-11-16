@@ -13,8 +13,15 @@
 <body>
   <main>
     <section class="game" aria-label="Partida de damas">
-      <div class="turn" aria-live="polite" aria-atomic="true"><span id="turn-piece" aria-hidden="true"></span><div><h2 id="status"></h2><p id="hint"></p></div></div>
-      <div id="board" class="board" role="group" aria-label="Tablero de ocho filas y ocho columnas"></div>
+      <div id="play-area">
+        <div class="turn" aria-live="polite" aria-atomic="true"><span id="turn-piece" aria-hidden="true"></span><div><h2 id="status" tabindex="-1"></h2><p id="hint"></p></div></div>
+        <div id="board" class="board" role="group" aria-label="Tablero de ocho filas y ocho columnas"></div>
+      </div>
+      <section id="result" class="result" aria-labelledby="result-title" hidden>
+        <div id="result-stars" class="result-stars" aria-hidden="true" hidden><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>
+        <h1 id="result-title" tabindex="-1" aria-describedby="result-message"></h1>
+        <p id="result-message"></p>
+      </section>
       <p id="save-status" class="save" role="status" hidden></p>
     </section>
     <div class="actions"><button id="restart">Nueva partida</button></div>
